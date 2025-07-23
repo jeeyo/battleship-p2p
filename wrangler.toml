@@ -1,18 +1,19 @@
 name = "battleship-p2p"
-main = "worker.js"
-compatibility_date = "2023-12-01"
 
-[env.production]
-name = "battleship-p2p"
-routes = [
-  { pattern = "battleship-p2p.your-subdomain.workers.dev/*", zone_name = "your-domain.com" }
-]
+compatibility_date = "2023-07-01"
 
-# For custom domain (optional)
-# [env.production]
-# name = "battleship-p2p-prod"
-# route = { pattern = "battleship.your-domain.com/*", zone_name = "your-domain.com" }
+send_metrics = false
+pages_build_output_dir = "dist"
 
-# Environment variables (if needed)
-# [vars]
-# ENVIRONMENT = "production" 
+[dev]
+local_protocol = "https"
+
+# Bind a KV Namespace. Use KV as persistent storage for small key-value pairs.
+# Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#kv-namespaces
+[[kv_namespaces]]
+binding = "ROOMS"
+id = "ba4234ab6d294162bdc6bfd4f4a9a4b1"
+
+[[kv_namespaces]]
+binding = "MESSAGES"
+id = "a20d404987fa402bbd0c155b4fb139e2"

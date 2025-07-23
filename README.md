@@ -82,7 +82,7 @@ The game requires a Cloudflare Worker for WebRTC signaling:
 4. **Update the Signaling URL**:
    In `webrtc.js`, update the `signalingUrl` with your deployed worker URL:
    ```javascript
-   this.signalingUrl = 'https://battleship-p2p.your-subdomain.workers.dev';
+   this.signalingUrl = 'https://battleship-p2p.pages.dev';
    ```
 
 ## File Structure

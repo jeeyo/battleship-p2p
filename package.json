@@ -2,12 +2,10 @@
   "name": "battleship-p2p",
   "version": "1.0.0",
   "description": "A modern, web-based P2P Battleship game using WebRTC",
-  "main": "index.html",
   "scripts": {
-    "start": "npx serve .",
-    "dev": "npx serve . --live",
-    "deploy-worker": "wrangler deploy",
-    "preview-worker": "wrangler dev"
+    "dev": "npx serve dist/ --live",
+    "preview": "wrangler pages dev ./dist",
+    "deploy": "wrangler pages deploy ./dist"
   },
   "keywords": [
     "battleship",
@@ -15,20 +13,20 @@
     "p2p",
     "game",
     "multiplayer",
-    "cloudflare-workers"
+    "cloudflare-pages",
+    "cloudflare-functions"
   ],
-  "author": "Your Name",
+  "author": "jeeyo",
   "license": "MIT",
   "devDependencies": {
-    "serve": "^14.0.0",
-    "wrangler": "^3.0.0"
+    "wrangler": "^3.114.11"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/battleship-p2p.git"
+    "url": "https://github.com/jeeyo/battleship-p2p.git"
   },
   "bugs": {
-    "url": "https://github.com/your-username/battleship-p2p/issues"
+    "url": "https://github.com/jeeyo/battleship-p2p/issues"
   },
-  "homepage": "https://github.com/your-username/battleship-p2p#readme"
-} 
+  "homepage": "https://github.com/jeeyo/battleship-p2p#readme"
+}
