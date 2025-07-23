@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P Battleship</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <header>
+            <h1>⚓ P2P Battleship</h1>
+            <div class="connection-status">
+                <span id="status">Disconnected</span>
+                <span id="player-id"></span>
+            </div>
+        </header>
+
+        <main id="main-content">
+            <!-- Connection Screen -->
+            <div id="connection-screen" class="screen active">
+                <div class="connection-card">
+                    <h2>Join Game</h2>
+                    <div class="connection-options">
+                        <div class="option">
+                            <button id="create-game" class="primary-btn">Create New Game</button>
+                            <p>Start a new game and share the room code</p>
+                        </div>
+                        <div class="option">
+                            <input type="text" id="room-code" placeholder="Enter room code" maxlength="6">
+                            <button id="join-game" class="secondary-btn">Join Game</button>
+                            <p>Join an existing game with a room code</p>
+                        </div>
+                    </div>
+                    <div id="room-display" class="room-info hidden">
+                        <p>Room Code: <span id="current-room-code"></span></p>
+                        <p>Waiting for opponent...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ship Placement Screen -->
+            <div id="placement-screen" class="screen">
+                <div class="placement-container">
+                    <h2>Place Your Ships</h2>
+                    <div class="ship-selection">
+                        <div class="ships-to-place">
+                            <div class="ship-item" data-ship="carrier" data-size="5">
+                                <span>Carrier (5)</span>
+                                <div class="ship-preview horizontal" data-size="5"></div>
+                            </div>
+                            <div class="ship-item" data-ship="battleship" data-size="4">
+                                <span>Battleship (4)</span>
+                                <div class="ship-preview horizontal" data-size="4"></div>
+                            </div>
+                            <div class="ship-item" data-ship="cruiser" data-size="3">
+                                <span>Cruiser (3)</span>
+                                <div class="ship-preview horizontal" data-size="3"></div>
+                            </div>
+                            <div class="ship-item" data-ship="submarine" data-size="3">
+                                <span>Submarine (3)</span>
+                                <div class="ship-preview horizontal" data-size="3"></div>
+                            </div>
+                            <div class="ship-item" data-ship="destroyer" data-size="2">
+                                <span>Destroyer (2)</span>
+                                <div class="ship-preview horizontal" data-size="2"></div>
+                            </div>
+                        </div>
+                        <div class="placement-controls">
+                            <button id="rotate-ship" class="control-btn">Rotate Ship</button>
+                            <button id="random-placement" class="control-btn">Random Placement</button>
+                            <button id="clear-board" class="control-btn">Clear Board</button>
+                            <button id="ready-btn" class="primary-btn" disabled>Ready!</button>
+                        </div>
+                    </div>
+                    <div class="board-container">
+                        <div class="board placement-board" id="placement-board"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Screen -->
+            <div id="game-screen" class="screen">
+                <div class="game-info">
+                    <div class="turn-indicator">
+                        <span id="turn-status">Your turn</span>
+                    </div>
+                    <div class="game-stats">
+                        <div class="stat">
+                            <span>Ships Remaining</span>
+                            <span id="ships-remaining">5</span>
+                        </div>
+                        <div class="stat">
+                            <span>Shots Fired</span>
+                            <span id="shots-fired">0</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="boards-container">
+                    <div class="board-section">
+                        <h3>Your Fleet</h3>
+                        <div class="board player-board" id="player-board"></div>
+                    </div>
+                    <div class="board-section">
+                        <h3>Enemy Waters</h3>
+                        <div class="board enemy-board" id="enemy-board"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Over Screen -->
+            <div id="game-over-screen" class="screen">
+                <div class="game-over-card">
+                    <h2 id="game-result">Victory!</h2>
+                    <p id="game-summary">You have successfully sunk all enemy ships!</p>
+                    <div class="game-over-actions">
+                        <button id="play-again" class="primary-btn">Play Again</button>
+                        <button id="new-game" class="secondary-btn">New Game</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="game-logic.js"></script>
+    <script src="webrtc.js"></script>
+    <script src="app.js"></script>
+</body>
+</html> 

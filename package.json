@@ -1,0 +1,34 @@
+{
+  "name": "battleship-p2p",
+  "version": "1.0.0",
+  "description": "A modern, web-based P2P Battleship game using WebRTC",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve . --live",
+    "deploy-worker": "wrangler deploy",
+    "preview-worker": "wrangler dev"
+  },
+  "keywords": [
+    "battleship",
+    "webrtc",
+    "p2p",
+    "game",
+    "multiplayer",
+    "cloudflare-workers"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "serve": "^14.0.0",
+    "wrangler": "^3.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/battleship-p2p.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/battleship-p2p/issues"
+  },
+  "homepage": "https://github.com/your-username/battleship-p2p#readme"
+} 
