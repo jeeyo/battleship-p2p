@@ -15,6 +15,7 @@ class WebRTCManager {
             onConnectionStateChange: null,
             onDataReceived: null,
             onRoomCreated: null,
+            onRoomJoined: null,
             onPeerJoined: null,
             onError: null
         };
@@ -303,6 +304,10 @@ class WebRTCManager {
 
             // Start listening for signaling messages
             this.startSignalingListener();
+
+            if (this.callbacks.onRoomJoined) {
+                this.callbacks.onRoomJoined(this.roomCode);
+            }
 
             if (this.callbacks.onPeerJoined) {
                 this.callbacks.onPeerJoined();

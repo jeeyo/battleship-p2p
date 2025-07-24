@@ -88,6 +88,7 @@ class BattleshipApp {
             onConnectionStateChange: (state) => this.handleConnectionStateChange(state),
             onDataReceived: (data) => this.handleDataReceived(data),
             onRoomCreated: (roomCode) => this.handleRoomCreated(roomCode),
+            onRoomJoined: (roomCode) => this.handleRoomJoined(roomCode),
             onPeerJoined: () => this.handlePeerJoined(),
             onError: (error) => this.handleError(error)
         };
@@ -134,6 +135,45 @@ class BattleshipApp {
         if (state === 'connected') {
             this.showScreen('placement');
             this.game.gameState = 'placing';
+        } else if (['disconnected', 'failed', 'closed'].includes(state)) {
+            // Handle disconnections during different game phases
+            if (this.currentScreen === 'placement') {
+                this.showScreen('connection');
+                this.game.gameState = 'waiting';
+                // Reset WebRTC connection
+                this.webrtc.close();
+                // Reset game state and UI
+                this.game.resetGame();
+                this.elements.roomDisplay.classList.add('hidden');
+                this.elements.currentRoomCode.textContent = '';
+                this.elements.playerId.textContent = '';
+                this.elements.roomCodeInput.value = '';
+                // Reset button states
+                this.elements.createGameBtn.disabled = false;
+                this.elements.createGameBtn.textContent = 'Create New Game';
+                this.elements.joinGameBtn.disabled = false;
+                this.elements.joinGameBtn.textContent = 'Join Game';
+                // Show disconnection message
+                alert('Your opponent has disconnected during ship placement. Please create a new game or join another room.');
+            } else if (this.currentScreen === 'game') {
+                this.showScreen('connection');
+                this.game.gameState = 'waiting';
+                // Reset WebRTC connection
+                this.webrtc.close();
+                // Reset game state and UI
+                this.game.resetGame();
+                this.elements.roomDisplay.classList.add('hidden');
+                this.elements.currentRoomCode.textContent = '';
+                this.elements.playerId.textContent = '';
+                this.elements.roomCodeInput.value = '';
+                // Reset button states
+                this.elements.createGameBtn.disabled = false;
+                this.elements.createGameBtn.textContent = 'Create New Game';
+                this.elements.joinGameBtn.disabled = false;
+                this.elements.joinGameBtn.textContent = 'Join Game';
+                // Show disconnection message
+                alert('Your opponent has disconnected during the game. Please create a new game or join another room.');
+            }
         }
     }
     
@@ -146,6 +186,9 @@ class BattleshipApp {
             case 'player-ready':
                 this.game.setEnemyReady();
                 break;
+            case 'player-unready':
+                this.game.setEnemyUnready();
+                break;
             case 'attack':
                 this.receiveAttack(data.row, data.col);
                 break;
@@ -157,13 +200,22 @@ class BattleshipApp {
                 break;
         }
     }
-    
+
     handleRoomCreated(roomCode) {
         this.elements.currentRoomCode.textContent = roomCode;
         this.elements.roomDisplay.classList.remove('hidden');
         this.elements.playerId.textContent = `Room: ${roomCode}`;
     }
-    
+
+    handleRoomJoined(roomCode) {
+        this.elements.currentRoomCode.textContent = roomCode;
+        this.elements.roomDisplay.classList.remove('hidden');
+        this.elements.playerId.textContent = `Room: ${roomCode}`;
+        // Reset join button state
+        this.elements.joinGameBtn.disabled = false;
+        this.elements.joinGameBtn.textContent = 'Join Game';
+    }
+
     handlePeerJoined() {
         console.log('Peer joined the game');
     }
@@ -177,6 +229,9 @@ class BattleshipApp {
         if (state === 'playing') {
             this.showScreen('game');
             this.renderBoards();
+        } else if (state === 'placing') {
+            this.showScreen('placement');
+            this.updateReadyButton();
         }
     }
     
@@ -394,23 +449,45 @@ class BattleshipApp {
         }
     }
     
-    updateReadyButton() {
-        this.elements.readyBtn.disabled = !this.game.allShipsPlaced();
+        updateReadyButton() {
+        const allShipsPlaced = this.game.allShipsPlaced();
+        const isReady = this.game.playerReady;
+        
+        if (isReady) {
+            this.elements.readyBtn.textContent = 'Unready';
+            this.elements.readyBtn.disabled = false;
+            this.elements.readyBtn.className = 'secondary-btn';
+        } else {
+            this.elements.readyBtn.textContent = 'Ready!';
+            this.elements.readyBtn.disabled = !allShipsPlaced;
+            this.elements.readyBtn.className = 'primary-btn';
+        }
     }
-    
+
     setReady() {
-        // Send ship placement to opponent
-        const gameData = this.game.getGameData();
-        this.webrtc.sendGameData({
-            type: 'ship-placement',
-            ships: gameData.playerShips
-        });
+        if (this.game.playerReady) {
+            // Player wants to unready
+            this.webrtc.sendGameData({
+                type: 'player-unready'
+            });
+            this.game.setPlayerUnready();
+        } else {
+            // Player wants to ready
+            // Send ship placement to opponent
+            const gameData = this.game.getGameData();
+            this.webrtc.sendGameData({
+                type: 'ship-placement',
+                ships: gameData.playerShips
+            });
+            
+            this.webrtc.sendGameData({
+                type: 'player-ready'
+            });
+            
+            this.game.setPlayerReady();
+        }
         
-        this.webrtc.sendGameData({
-            type: 'player-ready'
-        });
-        
-        this.game.setPlayerReady();
+        this.updateReadyButton();
     }
     
     // Game board rendering
@@ -492,13 +569,18 @@ class BattleshipApp {
     receiveAttack(row, col) {
         const result = this.game.receiveEnemyMove(row, col);
         
+        // Check if this attack caused the defender to lose
+        const gameOver = this.game.gameState === 'finished';
+        
         // Send result back
         this.webrtc.sendGameData({
             type: 'attack-result',
             row: row,
             col: col,
             result: result.result,
-            ship: result.ship
+            ship: result.ship,
+            gameOver: gameOver,
+            winner: gameOver ? 'attacker' : null
         });
         
         // Update display
@@ -518,28 +600,12 @@ class BattleshipApp {
             }
         }
         
-        // Check for game over
-        if (data.result === 'sunk') {
-            // Count remaining enemy ships
-            const totalShips = 5; // carrier, battleship, cruiser, submarine, destroyer
-            const sunkShips = new Set();
-            
-            for (let r = 0; r < 10; r++) {
-                for (let c = 0; c < 10; c++) {
-                    const boardCell = this.game.enemyBoard[r][c];
-                    if (boardCell.sunk && boardCell.hasShip) {
-                        sunkShips.add(`${r}-${c}`);
-                    }
-                }
-            }
-            
-            // Simple check - if we have 17 sunk cells (5+4+3+3+2), all ships are sunk
-            if (sunkShips.size >= 17) {
-                this.game.gameState = 'finished';
-                this.handleGameOver('player');
-                this.renderEnemyBoard();
-                return;
-            }
+        // Check if the game is over (opponent confirmed they lost)
+        if (data.gameOver && data.winner === 'attacker') {
+            this.game.gameState = 'finished';
+            this.handleGameOver('player');
+            this.renderEnemyBoard();
+            return;
         }
         
         this.renderEnemyBoard();

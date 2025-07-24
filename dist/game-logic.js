@@ -215,14 +215,36 @@ class BattleshipGame {
         return ships.every(ship => ship.sunk);
     }
     
-    setPlayerReady() {
+        setPlayerReady() {
         this.playerReady = true;
         this.checkGameStart();
     }
-    
+
+    setPlayerUnready() {
+        this.playerReady = false;
+        // If we're in playing state and player becomes unready, go back to placing
+        if (this.gameState === 'playing') {
+            this.gameState = 'placing';
+            if (this.gameCallbacks.onGameStateChange) {
+                this.gameCallbacks.onGameStateChange('placing');
+            }
+        }
+    }
+
     setEnemyReady() {
         this.enemyReady = true;
         this.checkGameStart();
+    }
+
+    setEnemyUnready() {
+        this.enemyReady = false;
+        // If we're in playing state and enemy becomes unready, go back to placing
+        if (this.gameState === 'playing') {
+            this.gameState = 'placing';
+            if (this.gameCallbacks.onGameStateChange) {
+                this.gameCallbacks.onGameStateChange('placing');
+            }
+        }
     }
     
     checkGameStart() {
