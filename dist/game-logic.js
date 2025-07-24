@@ -35,12 +35,12 @@ class BattleshipGame {
     
     createBoard() {
         return Array(this.boardSize).fill(null).map(() => 
-            Array(this.boardSize).fill({
+            Array(this.boardSize).fill(null).map(() => ({
                 hasShip: false,
                 hit: false,
                 shipId: null,
                 shipPart: null
-            })
+            }))
         );
     }
     
@@ -54,12 +54,12 @@ class BattleshipGame {
             return false;
         }
         
-        // Check for ship overlap and adjacent ships
-        for (let r = Math.max(0, row - 1); r <= Math.min(this.boardSize - 1, endRow + 1); r++) {
-            for (let c = Math.max(0, col - 1); c <= Math.min(this.boardSize - 1, endCol + 1); c++) {
-                if (board[r][c].hasShip) {
-                    return false;
-                }
+        // Check for ship overlap only (allow adjacent ships)
+        for (let i = 0; i < size; i++) {
+            const r = orientation === 'vertical' ? row + i : row;
+            const c = orientation === 'horizontal' ? col + i : col;
+            if (board[r][c].hasShip) {
+                return false;
             }
         }
         
@@ -297,10 +297,8 @@ class BattleshipGame {
             return result;
         }
         
-        // Switch turns only on miss
-        if (result.result === 'miss') {
-            this.switchTurn();
-        }
+        // Don't switch turns here - let the attacker handle turn switching
+        // based on the result they receive
         
         return result;
     }

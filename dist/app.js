@@ -152,6 +152,9 @@ class BattleshipApp {
             case 'attack-result':
                 this.handleAttackResult(data);
                 break;
+            case 'turn-switch':
+                this.handleTurnSwitch(data);
+                break;
         }
     }
     
@@ -459,8 +462,20 @@ class BattleshipApp {
     enemyCellClick(row, col) {
         if (this.game.currentTurn !== 'player') return;
         
-        const result = this.game.makeMove(row, col);
-        if (!result) return;
+        // Check if cell already hit
+        const cell = this.game.enemyBoard[row][col];
+        if (cell.hit) return;
+        
+        // Mark as hit temporarily and increment shots
+        cell.hit = true;
+        this.game.shotsFired++;
+        
+        // Switch turns after making attack and notify opponent
+        this.game.switchTurn();
+        this.webrtc.sendGameData({
+            type: 'turn-switch',
+            newTurn: this.game.currentTurn
+        });
         
         // Send attack to opponent
         this.webrtc.sendGameData({
@@ -503,7 +518,38 @@ class BattleshipApp {
             }
         }
         
+        // Check for game over
+        if (data.result === 'sunk') {
+            // Count remaining enemy ships
+            const totalShips = 5; // carrier, battleship, cruiser, submarine, destroyer
+            const sunkShips = new Set();
+            
+            for (let r = 0; r < 10; r++) {
+                for (let c = 0; c < 10; c++) {
+                    const boardCell = this.game.enemyBoard[r][c];
+                    if (boardCell.sunk && boardCell.hasShip) {
+                        sunkShips.add(`${r}-${c}`);
+                    }
+                }
+            }
+            
+            // Simple check - if we have 17 sunk cells (5+4+3+3+2), all ships are sunk
+            if (sunkShips.size >= 17) {
+                this.game.gameState = 'finished';
+                this.handleGameOver('player');
+                this.renderEnemyBoard();
+                return;
+            }
+        }
+        
         this.renderEnemyBoard();
+        this.updateGameStats();
+    }
+    
+    handleTurnSwitch(data) {
+        // Synchronize turn state with opponent (invert the turn)
+        this.game.currentTurn = data.newTurn === 'player' ? 'enemy' : 'player';
+        this.handleTurnChange(this.game.currentTurn);
     }
     
     updateGameStats() {

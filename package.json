@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "A modern, web-based P2P Battleship game using WebRTC",
   "scripts": {
-    "dev": "npx serve dist/ --live",
     "preview": "wrangler pages dev ./dist",
     "deploy": "wrangler pages deploy ./dist"
   },
@@ -19,7 +18,7 @@
   "author": "jeeyo",
   "license": "MIT",
   "devDependencies": {
-    "wrangler": "^3.114.11"
+    "wrangler": "^4.26.0"
   },
   "repository": {
     "type": "git",

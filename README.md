@@ -10,14 +10,15 @@ A modern, web-based Battleship game that uses WebRTC for peer-to-peer gameplay. 
 - 📱 **Responsive Design**: Works on desktop and mobile devices
 - 🎨 **Modern UI**: Beautiful, animated interface with visual feedback
 - 🔐 **Simple Room System**: 6-character room codes for easy game sharing
-- 🌊 **Interactive Ship Placement**: Drag, drop, and rotate ships with visual validation
+- 🌊 **Interactive Ship Placement**: Click to place and rotate ships with visual validation
 - 📊 **Game Statistics**: Track shots fired and ships remaining
+- ⚡ **Flexible Ship Placement**: Ships can be placed adjacent to each other for strategic positioning
 
 ## Technology Stack
 
 - **Frontend**: HTML5, CSS3, JavaScript (ES6+)
 - **Networking**: WebRTC for P2P communication
-- **Signaling**: Cloudflare Workers
+- **Signaling**: Cloudflare Pages Functions
 - **Styling**: CSS Grid, Flexbox, CSS Variables
 - **Game Logic**: Object-oriented JavaScript
 
@@ -30,9 +31,9 @@ A modern, web-based Battleship game that uses WebRTC for peer-to-peer gameplay. 
    - Submarine (3 squares)
    - Destroyer (2 squares)
 
-2. Ships cannot overlap or be placed adjacent to each other
-3. Players take turns attacking opponent's grid coordinates
-4. A hit allows the player to attack again
+2. Ships cannot overlap but can be placed adjacent to each other
+3. Players alternate turns attacking opponent's grid coordinates
+4. Turns switch after every shot regardless of hit or miss
 5. First player to sink all enemy ships wins
 
 ## Quick Start
@@ -43,28 +44,22 @@ A modern, web-based Battleship game that uses WebRTC for peer-to-peer gameplay. 
    ```bash
    git clone <repository-url>
    cd battleship-p2p
+   npm install
    ```
 
-2. **Serve the Files**:
-   You need to serve the files over HTTP (not file://) for WebRTC to work:
+2. **Start Development Server**:
    ```bash
-   # Using Python
-   python -m http.server 8000
-   
-   # Using Node.js
-   npx serve .
-   
-   # Using any local web server
+   # Start local Cloudflare Pages development server
+   npm run preview
    ```
+   This will serve the game with local functions support.
 
 3. **Open in Browser**:
-   Navigate to `http://localhost:8000`
+   Navigate to `http://localhost:8788`
 
-### Deploying the Signaling Server
+### Deploying to Cloudflare Pages
 
-The game requires a Cloudflare Worker for WebRTC signaling:
-
-1. **Install Wrangler CLI**:
+1. **Install Wrangler CLI** (if not already installed):
    ```bash
    npm install -g wrangler
    ```
@@ -74,29 +69,32 @@ The game requires a Cloudflare Worker for WebRTC signaling:
    wrangler login
    ```
 
-3. **Deploy the Worker**:
+3. **Deploy to Cloudflare Pages**:
    ```bash
-   wrangler deploy
+   npm run deploy
    ```
 
-4. **Update the Signaling URL**:
-   In `webrtc.js`, update the `signalingUrl` with your deployed worker URL:
-   ```javascript
-   this.signalingUrl = 'https://battleship-p2p.pages.dev';
-   ```
+The signaling server is automatically configured to work in both development and production environments.
 
 ## File Structure
 
 ```
 battleship-p2p/
-├── index.html          # Main HTML structure
-├── styles.css          # CSS styling and animations
-├── game-logic.js       # Core Battleship game logic
-├── webrtc.js          # WebRTC connection management
-├── app.js             # Main application controller
-├── worker.js          # Cloudflare Worker signaling server
-├── wrangler.toml      # Worker deployment configuration
-└── README.md          # This file
+├── dist/                    # Built game files
+│   ├── index.html          # Main HTML structure
+│   ├── styles.css          # CSS styling and animations
+│   ├── game-logic.js       # Core Battleship game logic
+│   ├── webrtc.js          # WebRTC connection management
+│   └── app.js             # Main application controller
+├── functions/              # Cloudflare Pages Functions (API endpoints)
+│   ├── create-room.js     # Room creation endpoint
+│   ├── join-room.js       # Room joining endpoint
+│   ├── signal.js          # WebRTC signaling endpoint
+│   ├── poll.js            # Message polling endpoint
+│   └── health.js          # Health check endpoint
+├── package.json           # Node.js dependencies
+├── wrangler.toml         # Cloudflare Pages configuration
+└── README.md             # This file
 ```
 
 ## How to Play
@@ -108,8 +106,9 @@ battleship-p2p/
 2. **Place Your Ships**:
    - Click on a ship type to select it
    - Click on the board to place it
-   - Use "Rotate Ship" to change orientation
-   - Use "Random Placement" for quick setup
+   - Use "Rotate Ship" to change orientation between horizontal and vertical
+   - Use "Random Placement" for quick automatic setup
+   - Use "Clear Board" to remove all placed ships
    - Click "Ready!" when all ships are placed
 
 3. **Battle Phase**:
@@ -117,6 +116,7 @@ battleship-p2p/
    - Red squares with 💥 indicate hits
    - Gray squares with 💧 indicate misses
    - Black squares with 💀 indicate sunk ships
+   - Turns alternate after every shot
    - First to sink all enemy ships wins!
 
 ## Development
@@ -125,10 +125,11 @@ battleship-p2p/
 
 The codebase is modular and extensible:
 
-- **Game Logic**: Modify `BattleshipGame` class in `game-logic.js`
-- **UI Components**: Update HTML structure and CSS styling
-- **Networking**: Extend `WebRTCManager` class in `webrtc.js`
-- **Application Flow**: Modify `BattleshipApp` class in `app.js`
+- **Game Logic**: Modify `BattleshipGame` class in `dist/game-logic.js`
+- **UI Components**: Update HTML structure in `dist/index.html` and CSS styling in `dist/styles.css`
+- **Networking**: Extend `WebRTCManager` class in `dist/webrtc.js`
+- **Application Flow**: Modify `BattleshipApp` class in `dist/app.js`
+- **API Endpoints**: Add new functions in the `functions/` directory
 
 ### Key Classes
 
@@ -138,10 +139,19 @@ The codebase is modular and extensible:
 
 ### WebRTC Flow
 
-1. Room creation/joining via Cloudflare Worker
+1. Room creation/joining via Cloudflare Pages Functions
 2. Signaling message exchange (offers, answers, ICE candidates)
 3. Direct P2P data channel establishment
 4. Game data transmission over data channel
+5. Turn synchronization messages to maintain game state
+
+### API Endpoints
+
+- `POST /create-room` - Create a new game room
+- `POST /join-room` - Join an existing game room
+- `POST /signal` - Exchange WebRTC signaling messages
+- `GET /poll` - Poll for pending messages
+- `GET /health` - Health check endpoint
 
 ## Browser Compatibility
 
@@ -155,7 +165,7 @@ WebRTC is required for P2P functionality.
 ## Known Limitations
 
 1. **No Reconnection**: If connection drops, players need to start a new game
-2. **Memory Storage**: Cloudflare Worker uses in-memory storage (rooms expire)
+2. **Memory Storage**: Cloudflare KV storage with 2-hour expiration
 3. **No Spectators**: Only 2 players per room supported
 4. **No AI**: Human opponent required
 
@@ -165,7 +175,7 @@ WebRTC is required for P2P functionality.
 
 **"Failed to create/join room"**:
 - Check your internet connection
-- Verify the Cloudflare Worker is deployed and accessible
+- Verify the Cloudflare Pages deployment is accessible
 - Check browser console for detailed error messages
 
 **"WebRTC connection failed"**:
@@ -174,9 +184,14 @@ WebRTC is required for P2P functionality.
 - Try refreshing and creating a new room
 
 **"Ships not placing correctly"**:
-- Ships cannot overlap or be adjacent
-- Ensure ship fits within the 10x10 grid
-- Try using "Random Placement" if having issues
+- Ships cannot overlap but can be adjacent
+- Ensure ship fits within the 10x10 grid boundaries
+- Try using "Random Placement" if having manual placement issues
+
+**"Turns not switching properly"**:
+- Both players must have stable connections
+- Check if both players are using the same deployed version
+- Try refreshing if turn synchronization gets stuck
 
 ### Debug Mode
 
@@ -187,8 +202,16 @@ Open browser developer tools and check the console for detailed connection and g
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test thoroughly
+4. Test thoroughly in both development and production environments
 5. Submit a pull request
+
+## Recent Changes
+
+- **Adjacent Ship Placement**: Ships can now be placed touching each other
+- **Turn Mechanics**: Players alternate after every shot (not just misses)
+- **Improved Synchronization**: Better turn state management between players
+- **Board Bug Fixes**: Fixed issues with cell state management
+- **Cloudflare Pages**: Migrated to Cloudflare Pages Functions architecture
 
 ## License
 
@@ -198,7 +221,7 @@ This project is open source and available under the [MIT License](LICENSE).
 
 - Game concept: Classic Battleship board game
 - Icons: Emoji characters for visual feedback
-- Networking: WebRTC and Cloudflare Workers
+- Networking: WebRTC and Cloudflare Pages
 
 ---
 

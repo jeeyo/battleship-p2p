@@ -118,7 +118,7 @@ class WebRTCManager {
     getSignalingUrl() {
         // Check if running in development
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            return `https://${window.location.hostname}:8787`; // Local Wrangler dev server
+            return `http://${window.location.hostname}:8788`; // Local Wrangler dev server
         }
 
         // Production - replace with your actual worker URL

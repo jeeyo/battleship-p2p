@@ -6,7 +6,7 @@ send_metrics = false
 pages_build_output_dir = "dist"
 
 [dev]
-local_protocol = "https"
+local_protocol = "http"
 
 # Bind a KV Namespace. Use KV as persistent storage for small key-value pairs.
 # Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#kv-namespaces
