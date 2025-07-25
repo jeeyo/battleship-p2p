@@ -315,7 +315,6 @@ input:focus {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
     padding: 1rem;
     background: var(--background);
     border-radius: 8px;
@@ -354,6 +353,7 @@ input:focus {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 3rem;
+    margin-bottom: 2rem;
 }
 
 .board-section h3 {
@@ -385,6 +385,8 @@ input:focus {
     display: flex;
     align-items: center;
     justify-content: center;
+    aspect-ratio: 1;
+    min-height: 0;
 }
 
 .cell:hover {
@@ -401,8 +403,8 @@ input:focus {
 }
 
 .cell.hit::after {
-    content: '💥';
-    font-size: 0.8em;
+    content: '🔥';
+    font-size: 1em;
 }
 
 .cell.miss {
@@ -411,7 +413,7 @@ input:focus {
 
 .cell.miss::after {
     content: '💧';
-    font-size: 0.8em;
+    font-size: 1em;
 }
 
 .cell.sunk {
@@ -482,6 +484,10 @@ input:focus {
         text-align: center;
     }
     
+    .connection-status {
+        align-items: center;
+    }
+    
     .placement-container {
         grid-template-columns: 1fr;
     }
@@ -521,7 +527,12 @@ input:focus {
 }
 
 .cell.hit {
-    animation: pulse 0.3s ease-out;
+    animation: hitFlash 0.3s ease-out;
+}
+
+@keyframes hitFlash {
+    0%, 100% { background: var(--hit-color); }
+    50% { background: rgba(239, 68, 68, 0.8); }
 }
 
 .ship-item.selected {

@@ -309,10 +309,6 @@ class WebRTCManager {
                 this.callbacks.onRoomJoined(this.roomCode);
             }
 
-            if (this.callbacks.onPeerJoined) {
-                this.callbacks.onPeerJoined();
-            }
-
             return true;
         } catch (error) {
             console.error('Error joining room:', error);
@@ -443,6 +439,11 @@ class WebRTCManager {
 
     // Handle peer joined event
     async handlePeerJoined() {
+        // Notify the host that someone joined
+        if (this.callbacks.onPeerJoined) {
+            this.callbacks.onPeerJoined();
+        }
+        
         if (this.isInitiator) {
             // Create and send offer
             const offer = await this.peerConnection.createOffer();

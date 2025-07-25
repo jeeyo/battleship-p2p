@@ -11,6 +11,7 @@ class BattleshipApp {
             roomCodeInput: document.getElementById('room-code'),
             roomDisplay: document.getElementById('room-display'),
             currentRoomCode: document.getElementById('current-room-code'),
+            roomStatus: document.getElementById('room-status'),
             
             // Status elements
             status: document.getElementById('status'),
@@ -133,6 +134,15 @@ class BattleshipApp {
         this.elements.status.className = state === 'connected' ? 'connected' : '';
         
         if (state === 'connected') {
+            // Reset join button state now that connection is established
+            this.elements.joinGameBtn.disabled = false;
+            this.elements.joinGameBtn.textContent = 'Join Game';
+            
+            // Update room status to show successful connection
+            if (this.elements.roomStatus) {
+                this.elements.roomStatus.textContent = 'Connected! Setting up game...';
+            }
+            
             this.showScreen('placement');
             this.game.gameState = 'placing';
         } else if (['disconnected', 'failed', 'closed'].includes(state)) {
@@ -148,6 +158,7 @@ class BattleshipApp {
                 this.elements.currentRoomCode.textContent = '';
                 this.elements.playerId.textContent = '';
                 this.elements.roomCodeInput.value = '';
+                this.elements.roomStatus.textContent = 'Waiting for opponent...';
                 // Reset button states
                 this.elements.createGameBtn.disabled = false;
                 this.elements.createGameBtn.textContent = 'Create New Game';
@@ -166,6 +177,7 @@ class BattleshipApp {
                 this.elements.currentRoomCode.textContent = '';
                 this.elements.playerId.textContent = '';
                 this.elements.roomCodeInput.value = '';
+                this.elements.roomStatus.textContent = 'Waiting for opponent...';
                 // Reset button states
                 this.elements.createGameBtn.disabled = false;
                 this.elements.createGameBtn.textContent = 'Create New Game';
@@ -205,19 +217,26 @@ class BattleshipApp {
         this.elements.currentRoomCode.textContent = roomCode;
         this.elements.roomDisplay.classList.remove('hidden');
         this.elements.playerId.textContent = `Room: ${roomCode}`;
+        // Room creator goes first
+        this.game.setInitiator(true);
     }
 
     handleRoomJoined(roomCode) {
         this.elements.currentRoomCode.textContent = roomCode;
         this.elements.roomDisplay.classList.remove('hidden');
         this.elements.playerId.textContent = `Room: ${roomCode}`;
-        // Reset join button state
-        this.elements.joinGameBtn.disabled = false;
-        this.elements.joinGameBtn.textContent = 'Join Game';
+        // Keep button in "Joining..." state until WebRTC connection is established
+        // Button will be reset in handleConnectionStateChange when connected
+        // Joiner waits for room creator to go first
+        this.game.setInitiator(false);
     }
 
     handlePeerJoined() {
         console.log('Peer joined the game');
+        // Update status to show someone joined but WebRTC is still connecting
+        if (this.elements.roomStatus) {
+            this.elements.roomStatus.textContent = 'Opponent joined! Connecting...';
+        }
     }
     
     handleError(error) {
@@ -229,6 +248,8 @@ class BattleshipApp {
         if (state === 'playing') {
             this.showScreen('game');
             this.renderBoards();
+            // Initialize turn indicator when game starts
+            this.handleTurnChange(this.game.currentTurn);
         } else if (state === 'placing') {
             this.showScreen('placement');
             this.updateReadyButton();
@@ -648,6 +669,7 @@ class BattleshipApp {
         this.elements.status.textContent = 'Disconnected';
         this.elements.status.className = '';
         this.elements.playerId.textContent = '';
+        this.elements.roomStatus.textContent = 'Waiting for opponent...';
         
         this.elements.createGameBtn.disabled = false;
         this.elements.createGameBtn.textContent = 'Create New Game';

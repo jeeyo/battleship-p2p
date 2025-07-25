@@ -18,6 +18,7 @@ class BattleshipGame {
         this.gameState = 'waiting'; // waiting, placing, playing, finished
         this.playerReady = false;
         this.enemyReady = false;
+        this.isInitiator = false; // Whether this player created the room
         
         this.selectedShip = null;
         this.shipOrientation = 'horizontal';
@@ -250,11 +251,16 @@ class BattleshipGame {
     checkGameStart() {
         if (this.playerReady && this.enemyReady) {
             this.gameState = 'playing';
-            this.currentTurn = 'player';
+            // Room creator goes first, joiner waits
+            this.currentTurn = this.isInitiator ? 'player' : 'enemy';
             if (this.gameCallbacks.onGameStateChange) {
                 this.gameCallbacks.onGameStateChange('playing');
             }
         }
+    }
+    
+    setInitiator(isInitiator) {
+        this.isInitiator = isInitiator;
     }
     
     switchTurn() {
@@ -340,6 +346,7 @@ class BattleshipGame {
         this.selectedShip = null;
         this.shipOrientation = 'horizontal';
         this.shotsFired = 0;
+        // Don't reset isInitiator - preserve who created the room
     }
     
     // Utility methods

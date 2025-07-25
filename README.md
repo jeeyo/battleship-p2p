@@ -2,6 +2,8 @@
 
 A modern, web-based Battleship game that uses WebRTC for peer-to-peer gameplay. Players can create or join games using room codes, place their ships, and battle it out in real-time without the need for a central game server.
 
+Demo: https://battleship-p2p.pages.dev/
+
 ## Features
 
 - 🚢 **Classic Battleship Gameplay**: Place 5 ships and try to sink your opponent's fleet
@@ -113,7 +115,7 @@ battleship-p2p/
 
 3. **Battle Phase**:
    - Click on the enemy board to attack
-   - Red squares with 💥 indicate hits
+   - Red squares with 🔥 indicate hits
    - Gray squares with 💧 indicate misses
    - Black squares with 💀 indicate sunk ships
    - Turns alternate after every shot
