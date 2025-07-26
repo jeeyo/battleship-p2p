@@ -49,6 +49,8 @@ class BattleshipApp {
             // Game over screen
             gameResult: document.getElementById('game-result'),
             gameSummary: document.getElementById('game-summary'),
+            finalPlayerBoard: document.getElementById('final-player-board'),
+            finalEnemyBoard: document.getElementById('final-enemy-board'),
             playAgainBtn: document.getElementById('play-again'),
             newGameBtn: document.getElementById('new-game')
         };
@@ -296,6 +298,9 @@ class BattleshipApp {
         this.elements.gameSummary.textContent = winner === 'player' 
             ? 'You have successfully sunk all enemy ships!'
             : 'All your ships have been destroyed!';
+        
+        // Render final boards to show complete game state
+        this.renderFinalBoards();
         this.showScreen('game-over');
     }
     
@@ -694,6 +699,53 @@ class BattleshipApp {
         const remainingShips = this.game.playerShips.filter(ship => !ship.sunk).length;
         this.elements.shipsRemaining.textContent = remainingShips;
         this.elements.shotsFired.textContent = this.game.shotsFired;
+    }
+    
+    // Final boards rendering (shows all ships)
+    renderFinalBoards() {
+        this.renderFinalPlayerBoard();
+        this.renderFinalEnemyBoard();
+    }
+    
+    renderFinalPlayerBoard() {
+        this.elements.finalPlayerBoard.innerHTML = '';
+        
+        for (let row = 0; row < 10; row++) {
+            for (let col = 0; col < 10; col++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                
+                const cellState = this.game.getCellState(this.game.playerBoard, row, col);
+                cell.classList.add(cellState);
+                
+                this.elements.finalPlayerBoard.appendChild(cell);
+            }
+        }
+    }
+    
+    renderFinalEnemyBoard() {
+        this.elements.finalEnemyBoard.innerHTML = '';
+        
+        for (let row = 0; row < 10; row++) {
+            for (let col = 0; col < 10; col++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                
+                const cellData = this.game.enemyBoard[row][col];
+                
+                // Show all ships on the final enemy board
+                if (cellData.hasShip) {
+                    cell.classList.add('ship');
+                    if (cellData.hit) {
+                        cell.classList.add(cellData.sunk ? 'sunk' : 'hit');
+                    }
+                } else if (cellData.hit) {
+                    cell.classList.add('miss');
+                }
+                
+                this.elements.finalEnemyBoard.appendChild(cell);
+            }
+        }
     }
     
     // Ship preview methods

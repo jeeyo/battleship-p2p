@@ -136,9 +136,24 @@
 
             <!-- Game Over Screen -->
             <div id="game-over-screen" class="screen">
-                <div class="game-over-card">
-                    <h2 id="game-result">Victory!</h2>
-                    <p id="game-summary">You have successfully sunk all enemy ships!</p>
+                <div class="game-over-container">
+                    <div class="game-over-header">
+                        <h2 id="game-result">Victory!</h2>
+                        <p id="game-summary">You have successfully sunk all enemy ships!</p>
+                    </div>
+                    
+                    <!-- Final Boards Display -->
+                    <div class="final-boards-container">
+                        <div class="final-board-section">
+                            <h3>Your Fleet</h3>
+                            <div class="board final-player-board" id="final-player-board"></div>
+                        </div>
+                        <div class="final-board-section">
+                            <h3>Enemy Fleet</h3>
+                            <div class="board final-enemy-board" id="final-enemy-board"></div>
+                        </div>
+                    </div>
+                    
                     <div class="game-over-actions">
                         <button id="play-again" class="primary-btn">Play Again</button>
                         <button id="new-game" class="secondary-btn">New Game</button>

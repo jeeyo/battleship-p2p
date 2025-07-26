@@ -583,24 +583,73 @@ input:focus {
 }
 
 /* Game Over Screen */
-.game-over-card {
+.game-over-container {
     background: var(--surface);
     border-radius: 16px;
-    padding: 3rem;
+    padding: 2rem;
     box-shadow: var(--shadow-lg);
-    max-width: 500px;
+    max-width: 1000px;
     margin: 0 auto;
     text-align: center;
 }
 
-.game-over-card h2 {
+.game-over-header {
+    margin-bottom: 2rem;
+}
+
+.game-over-header h2 {
     font-size: 2.5rem;
     margin-bottom: 1rem;
     color: var(--success-color);
 }
 
-.game-over-card h2.defeat {
+.game-over-header h2.defeat {
     color: var(--danger-color);
+}
+
+.game-over-header p {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    margin-bottom: 0;
+}
+
+/* Final Boards Display */
+.final-boards-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    margin: 2rem 0;
+    padding: 1.5rem;
+    background: var(--background);
+    border-radius: 12px;
+}
+
+.final-board-section h3 {
+    text-align: center;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.final-player-board,
+.final-enemy-board {
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+/* Show all ships on final boards */
+.final-enemy-board .cell.ship {
+    background: var(--ship-color);
+}
+
+.final-enemy-board .cell.ship.hit {
+    background: var(--hit-color);
+}
+
+.final-enemy-board .cell.ship.sunk {
+    background: var(--danger-color);
 }
 
 .game-over-actions {
@@ -675,6 +724,28 @@ input:focus {
     
     .game-stats {
         justify-content: center;
+    }
+    
+    /* Game Over Screen Mobile */
+    .game-over-container {
+        padding: 1.5rem;
+        max-width: 100%;
+    }
+    
+    .game-over-header h2 {
+        font-size: 2rem;
+    }
+    
+    .final-boards-container {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        margin: 1.5rem 0;
+        padding: 1rem;
+    }
+    
+    .final-player-board,
+    .final-enemy-board {
+        max-width: 280px;
     }
 }
 
