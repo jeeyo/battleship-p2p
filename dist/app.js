@@ -3,6 +3,7 @@ class BattleshipApp {
         this.game = new BattleshipGame();
         this.webrtc = new WebRTCManager();
         this.currentScreen = 'connection';
+        this.connectionState = 'disconnected';
         
         this.elements = {
             // Connection screen
@@ -30,6 +31,8 @@ class BattleshipApp {
             randomPlacementBtn: document.getElementById('random-placement'),
             clearBoardBtn: document.getElementById('clear-board'),
             readyBtn: document.getElementById('ready-btn'),
+            playerReadyStatus: document.getElementById('player-ready-status'),
+            opponentReadyStatus: document.getElementById('opponent-ready-status'),
             
             // Ship preview elements
             shipPreviewArea: document.querySelector('.ship-preview-area'),
@@ -136,6 +139,7 @@ class BattleshipApp {
     
     // WebRTC event handlers
     handleConnectionStateChange(state) {
+        this.connectionState = state; // Store connection state locally
         this.elements.status.textContent = state === 'connected' ? 'Connected' : 'Disconnected';
         this.elements.status.className = state === 'connected' ? 'connected' : '';
         
@@ -151,6 +155,7 @@ class BattleshipApp {
             
             this.showScreen('placement');
             this.game.gameState = 'placing';
+            this.updatePlacementStatus();
         } else if (['disconnected', 'failed', 'closed'].includes(state)) {
             // Handle disconnections during different game phases
             if (this.currentScreen === 'placement') {
@@ -200,12 +205,15 @@ class BattleshipApp {
             case 'ship-placement':
                 this.game.loadEnemyShips(data.ships);
                 this.game.setEnemyReady();
+                this.updatePlacementStatus();
                 break;
             case 'player-ready':
                 this.game.setEnemyReady();
+                this.updatePlacementStatus();
                 break;
             case 'player-unready':
                 this.game.setEnemyUnready();
+                this.updatePlacementStatus();
                 break;
             case 'attack':
                 this.receiveAttack(data.row, data.col);
@@ -259,6 +267,7 @@ class BattleshipApp {
         } else if (state === 'placing') {
             this.showScreen('placement');
             this.updateReadyButton();
+            this.updatePlacementStatus();
         }
     }
     
@@ -498,6 +507,33 @@ class BattleshipApp {
             this.elements.readyBtn.disabled = !allShipsPlaced;
             this.elements.readyBtn.className = 'primary-btn';
         }
+        
+        // Update status indicators
+        this.updatePlacementStatus();
+    }
+    
+    updatePlacementStatus() {
+        // Update player status
+        if (this.game.playerReady) {
+            this.elements.playerReadyStatus.textContent = 'Ready';
+            this.elements.playerReadyStatus.className = 'status-badge ready';
+        } else {
+            this.elements.playerReadyStatus.textContent = 'Not Ready';
+            this.elements.playerReadyStatus.className = 'status-badge not-ready';
+        }
+        
+        // Update opponent status
+        console.log('Updating placement status - Connection:', this.connectionState, 'Enemy Ready:', this.game.enemyReady);
+        if (this.connectionState !== 'connected') {
+            this.elements.opponentReadyStatus.textContent = 'Waiting...';
+            this.elements.opponentReadyStatus.className = 'status-badge waiting';
+        } else if (this.game.enemyReady) {
+            this.elements.opponentReadyStatus.textContent = 'Ready';
+            this.elements.opponentReadyStatus.className = 'status-badge ready';
+        } else {
+            this.elements.opponentReadyStatus.textContent = 'Not Ready';
+            this.elements.opponentReadyStatus.className = 'status-badge not-ready';
+        }
     }
 
     setReady() {
@@ -660,6 +696,33 @@ class BattleshipApp {
         this.elements.shotsFired.textContent = this.game.shotsFired;
     }
     
+    // Ship preview methods
+    updateShipPreview() {
+        if (!this.game.selectedShip) {
+            this.elements.previewShipName.textContent = 'Select a ship';
+            this.elements.previewShipVisual.innerHTML = '';
+            this.elements.shipPreviewArea.classList.remove('selected');
+            return;
+        }
+
+        const ship = this.game.ships.find(s => s.name === this.game.selectedShip);
+        const shipDisplayName = ship.name.charAt(0).toUpperCase() + ship.name.slice(1);
+        this.elements.previewShipName.textContent = `${shipDisplayName} (${ship.size})`;
+        
+        // Clear previous preview
+        this.elements.previewShipVisual.innerHTML = '';
+        this.elements.previewShipVisual.className = `preview-ship-visual ${this.game.shipOrientation}`;
+        
+        // Add ship blocks
+        for (let i = 0; i < ship.size; i++) {
+            const shipBlock = document.createElement('div');
+            shipBlock.className = 'ship-block';
+            this.elements.previewShipVisual.appendChild(shipBlock);
+        }
+        
+        this.elements.shipPreviewArea.classList.add('selected');
+    }
+
     // Game control methods
     playAgain() {
         this.game.resetGame();

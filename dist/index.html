@@ -82,6 +82,21 @@
                             <button id="clear-board" class="control-btn">Clear Board</button>
                             <button id="ready-btn" class="primary-btn" disabled>Ready!</button>
                         </div>
+                        
+                        <!-- Player Status Section -->
+                        <div class="placement-status">
+                            <h4>Game Status</h4>
+                            <div class="status-indicators">
+                                <div class="player-status-item">
+                                    <span class="status-label">You:</span>
+                                    <span id="player-ready-status" class="status-badge not-ready">Not Ready</span>
+                                </div>
+                                <div class="player-status-item">
+                                    <span class="status-label">Opponent:</span>
+                                    <span id="opponent-ready-status" class="status-badge waiting">Waiting...</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="board-container">
                         <div class="board placement-board" id="placement-board"></div>

@@ -381,6 +381,66 @@ input:focus {
     gap: 0.75rem;
 }
 
+/* Placement Status Section */
+.placement-status {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: var(--background);
+    border-radius: 8px;
+    border: 2px solid var(--border);
+}
+
+.placement-status h4 {
+    margin: 0 0 1rem 0;
+    color: var(--text-primary);
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+}
+
+.status-indicators {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.player-status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.status-label {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-badge.ready {
+    background: var(--success-color);
+    color: white;
+}
+
+.status-badge.not-ready {
+    background: var(--secondary-color);
+    color: white;
+}
+
+.status-badge.waiting {
+    background: var(--accent-color);
+    color: white;
+}
+
 /* Game Screen */
 #game-screen {
     background: var(--surface);
