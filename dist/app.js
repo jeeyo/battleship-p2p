@@ -31,6 +31,11 @@ class BattleshipApp {
             clearBoardBtn: document.getElementById('clear-board'),
             readyBtn: document.getElementById('ready-btn'),
             
+            // Ship preview elements
+            shipPreviewArea: document.querySelector('.ship-preview-area'),
+            previewShipName: document.getElementById('preview-ship-name'),
+            previewShipVisual: document.getElementById('preview-ship-visual'),
+            
             // Game screen
             playerBoard: document.getElementById('player-board'),
             enemyBoard: document.getElementById('enemy-board'),
@@ -49,6 +54,7 @@ class BattleshipApp {
         this.setupGameCallbacks();
         this.setupWebRTCCallbacks();
         this.initializePlacementBoard();
+        this.updateShipPreview(); // Initialize the preview
     }
     
     setupEventListeners() {
@@ -341,12 +347,15 @@ class BattleshipApp {
             shipItem.classList.remove('placed');
             this.renderPlacementBoard();
             this.updateReadyButton();
+            this.game.selectedShip = null;
+            this.updateShipPreview();
             return;
         }
         
         // Select new ship
         shipItem.classList.add('selected');
         this.game.selectedShip = shipName;
+        this.updateShipPreview();
     }
     
     rotateShip() {
@@ -356,6 +365,9 @@ class BattleshipApp {
         document.querySelectorAll('.ship-preview').forEach(preview => {
             preview.className = `ship-preview ${this.game.shipOrientation}`;
         });
+        
+        // Update the main ship preview area
+        this.updateShipPreview();
     }
     
     placementCellClick(row, col) {
@@ -379,6 +391,7 @@ class BattleshipApp {
             this.game.selectedShip = null;
             this.renderPlacementBoard();
             this.updateReadyButton();
+            this.updateShipPreview();
         }
     }
     
@@ -426,6 +439,7 @@ class BattleshipApp {
         this.game.selectedShip = null;
         this.renderPlacementBoard();
         this.updateReadyButton();
+        this.updateShipPreview();
     }
     
     clearBoard() {
@@ -454,6 +468,7 @@ class BattleshipApp {
         this.game.selectedShip = null;
         this.renderPlacementBoard();
         this.updateReadyButton();
+        this.updateShipPreview();
     }
     
     renderPlacementBoard() {
@@ -656,6 +671,7 @@ class BattleshipApp {
             item.classList.remove('placed', 'selected');
         });
         this.updateReadyButton();
+        this.updateShipPreview();
     }
     
     newGame() {
@@ -676,6 +692,8 @@ class BattleshipApp {
         this.elements.joinGameBtn.disabled = false;
         this.elements.joinGameBtn.textContent = 'Join Game';
     }
+
+
 }
 
 // Initialize the app when DOM is loaded

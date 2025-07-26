@@ -224,6 +224,84 @@ input:focus {
     margin-bottom: 1rem;
 }
 
+/* Ship Preview Area (like Tetris next piece) */
+.ship-preview-area {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow);
+    display: none; /* Hidden by default on desktop */
+}
+
+.ship-preview-area h3 {
+    color: white;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.current-ship-display {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 1rem;
+    backdrop-filter: blur(10px);
+}
+
+#preview-ship-name {
+    display: block;
+    color: white;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    font-size: 1.1rem;
+}
+
+.preview-ship-visual {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 40px;
+    gap: 4px;
+}
+
+.preview-ship-visual.horizontal {
+    flex-direction: row;
+}
+
+.preview-ship-visual.vertical {
+    flex-direction: column;
+}
+
+.preview-ship-visual .ship-block {
+    width: 24px;
+    height: 24px;
+    background: white;
+    border-radius: 3px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+}
+
+.preview-ship-visual.vertical .ship-block {
+    width: 24px;
+    height: 24px;
+}
+
+.ship-preview-area.selected {
+    animation: pulseGlow 2s infinite;
+}
+
+@keyframes pulseGlow {
+    0%, 100% { 
+        box-shadow: var(--shadow), 0 0 20px rgba(37, 99, 235, 0.5);
+    }
+    50% { 
+        box-shadow: var(--shadow), 0 0 30px rgba(37, 99, 235, 0.8);
+    }
+}
+
 .ship-selection {
     display: flex;
     flex-direction: column;
@@ -490,6 +568,35 @@ input:focus {
     
     .placement-container {
         grid-template-columns: 1fr;
+    }
+    
+    /* Make ship preview area visible and prominent on mobile */
+    .ship-preview-area {
+        display: block; /* Show on mobile */
+        position: sticky;
+        top: 10px;
+        z-index: 10;
+        margin-bottom: 1.5rem;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .ship-preview-area h3 {
+        font-size: 1.2rem;
+        margin-bottom: 1.2rem;
+    }
+    
+    .current-ship-display {
+        padding: 1.5rem;
+    }
+    
+    #preview-ship-name {
+        font-size: 1.3rem;
+        margin-bottom: 1rem;
+    }
+    
+    .preview-ship-visual .ship-block {
+        width: 28px;
+        height: 28px;
     }
     
     .boards-container {
