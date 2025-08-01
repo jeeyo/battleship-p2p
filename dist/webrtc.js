@@ -22,12 +22,12 @@ class WebRTCManager {
 
         this.configuration = {
             "iceServers": [
-                {
-                    "urls": [
-                        "stun:stun.cloudflare.com:3478",
-                        "stun:stun.cloudflare.com:53"
-                    ]
-                },
+                // {
+                //     "urls": [
+                //         "stun:stun.cloudflare.com:3478",
+                //         "stun:stun.cloudflare.com:53"
+                //     ]
+                // },
                 {
                     "urls": [
                         "turn:turn.cloudflare.com:3478?transport=udp",
