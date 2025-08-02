@@ -39,21 +39,34 @@ export async function onRequestPost(context) {
             expirationTtl: 2 * 60 * 60 // 2 hours
         });
         
-        // Add peer-joined message
+        // Add peer-joined message with proper sequencing
         const messagesData = await env.MESSAGES.get(roomCode);
         const messages = messagesData ? JSON.parse(messagesData) : [];
         
-        messages.push({
-            type: 'peer-joined',
-            timestamp: Date.now()
-        });
+        const timestamp = Date.now();
+        const lastSequence = messages.length > 0 ? 
+            Math.max(...messages.map(m => m.sequence || 0)) : 0;
         
-        // Keep only recent messages (last 50)
-        if (messages.length > 50) {
-            messages.splice(0, messages.length - 50);
+        const peerJoinedMessage = {
+            type: 'peer-joined',
+            timestamp: timestamp,
+            sequence: lastSequence + 1,
+            messageId: `system_${timestamp}_${Math.random().toString(36).substr(2, 5)}`,
+            senderId: 'system'
+        };
+        
+        messages.push(peerJoinedMessage);
+        
+        // Clean up old messages by both count and age
+        const oneHourAgo = timestamp - (60 * 60 * 1000);
+        let filteredMessages = messages.filter(msg => msg.timestamp > oneHourAgo);
+        
+        // Also limit by count as a fallback
+        if (filteredMessages.length > 100) {
+            filteredMessages = filteredMessages.slice(-50); // Keep last 50
         }
         
-        await env.MESSAGES.put(roomCode, JSON.stringify(messages), {
+        await env.MESSAGES.put(roomCode, JSON.stringify(filteredMessages), {
             expirationTtl: 2 * 60 * 60 // 2 hours
         });
         

@@ -35,12 +35,38 @@ export async function onRequestGet(context) {
         const messagesData = await env.MESSAGES.get(roomCode);
         const allMessages = messagesData ? JSON.parse(messagesData) : [];
         
-        // Filter messages newer than lastTimestamp and not sent by the requester
-        const newMessages = allMessages.filter(msg => 
-            msg.timestamp > lastTimestamp && msg.senderId !== requesterId
-        );
+        // Efficient filtering with early termination for large message lists
+        const newMessages = [];
+        let lastSequence = 0;
         
-        return new Response(JSON.stringify(newMessages), {
+        // Iterate in reverse to find messages more efficiently (newer messages are at the end)
+        for (let i = allMessages.length - 1; i >= 0; i--) {
+            const msg = allMessages[i];
+            
+            // Skip messages that are too old (optimization)
+            if (msg.timestamp <= lastTimestamp) {
+                break;
+            }
+            
+            // Skip messages from the requester
+            if (msg.senderId === requesterId) {
+                continue;
+            }
+            
+            newMessages.unshift(msg);
+            lastSequence = Math.max(lastSequence, msg.sequence || 0);
+            
+            // Limit response size to prevent memory issues
+            if (newMessages.length >= 20) {
+                break;
+            }
+        }
+        
+        return new Response(JSON.stringify({
+            messages: newMessages,
+            lastSequence: lastSequence,
+            hasMore: newMessages.length >= 20
+        }), {
             headers: { 'Content-Type': 'application/json' }
         });
     } catch (error) {

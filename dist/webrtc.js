@@ -40,6 +40,7 @@ class WebRTCManager {
         };
 
         this.lastPollTimestamp = 0;
+        this.lastSequence = 0;
         this.pollInterval = null;
 
         // Message queue system
@@ -47,22 +48,31 @@ class WebRTCManager {
         this.isProcessingQueue = false;
         this.queueProcessingInterval = 1500; // Process every 1.5s due to Cloudflare KV limits (https://developers.cloudflare.com/kv/platform/limits/)
         this.maxQueueSize = 50; // Prevent memory issues
+        this.messageRetryMap = new Map(); // Track retry counts for failed messages
+        this.processedMessageIds = new Set(); // Track processed messages to prevent duplicates
     }
 
     // Queue management methods
 
     // Add message to queue
     queueSignalingMessage(message) {
+        // Generate unique message ID if not provided
+        const messageId = message.messageId || `${this.clientId}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+        
         // Prevent queue from growing too large
         if (this.messageQueue.length >= this.maxQueueSize) {
             console.warn('Signaling message queue full, dropping oldest message');
-            this.messageQueue.shift();
+            const droppedMessage = this.messageQueue.shift();
+            this.messageRetryMap.delete(droppedMessage.messageId);
         }
 
-        // Add timestamp for processing order
+        // Add enhanced metadata for processing
         const queuedMessage = {
             ...message,
-            queueTimestamp: Date.now()
+            messageId: messageId,
+            queueTimestamp: Date.now(),
+            retryCount: 0,
+            maxRetries: 3
         };
 
         this.messageQueue.push(queuedMessage);
@@ -91,11 +101,37 @@ class WebRTCManager {
         const message = this.messageQueue.shift();
 
         try {
-            await this.sendSignalingMessageDirect(message);
+            const response = await this.sendSignalingMessageDirect(message);
+            
+            // Handle successful response
+            if (response && response.isDuplicate) {
+                console.log('Message was already processed (duplicate):', message.messageId);
+            }
+            
+            // Remove from retry tracking on success
+            this.messageRetryMap.delete(message.messageId);
+            
         } catch (error) {
             console.error('Error processing queued signaling message:', error);
-            if (this.callbacks.onError) {
-                this.callbacks.onError('Failed to send signaling message: ' + error.message);
+            
+            // Retry logic
+            message.retryCount = (message.retryCount || 0) + 1;
+            
+            if (message.retryCount < message.maxRetries) {
+                console.log(`Retrying message ${message.messageId}, attempt ${message.retryCount + 1}`);
+                
+                // Exponential backoff: add back to queue with delay
+                setTimeout(() => {
+                    this.messageQueue.unshift(message);
+                }, Math.pow(2, message.retryCount) * 1000);
+                
+            } else {
+                console.error(`Failed to send message ${message.messageId} after ${message.maxRetries} attempts`);
+                this.messageRetryMap.delete(message.messageId);
+                
+                if (this.callbacks.onError) {
+                    this.callbacks.onError(`Failed to send signaling message after ${message.maxRetries} attempts: ${error.message}`);
+                }
             }
         }
 
@@ -109,6 +145,8 @@ class WebRTCManager {
     stopQueueProcessing() {
         this.isProcessingQueue = false;
         this.messageQueue = []; // Clear remaining messages
+        this.messageRetryMap.clear(); // Clear retry tracking
+        this.processedMessageIds.clear(); // Clear processed message tracking
     }
 
     // Determine signaling URL based on environment
@@ -323,10 +361,11 @@ class WebRTCManager {
     // Send signaling message directly to server (internal use)
     async sendSignalingMessageDirect(message) {
         try {
-            // Add senderId to the message
+            // Add senderId and messageId to the message
             const messageWithSender = {
                 ...message,
-                senderId: this.clientId
+                senderId: this.clientId,
+                messageId: message.messageId
             };
 
             const response = await fetch(`${this.signalingUrl}/signal`, {
@@ -342,6 +381,9 @@ class WebRTCManager {
                 console.error('Failed to send signaling message:', errorData);
                 throw new Error(errorData.error || `HTTP ${response.status}`);
             }
+            
+            // Return response data for handling in processNextMessage
+            return await response.json();
         } catch (error) {
             console.error('Error sending signaling message:', error);
             throw error;
@@ -363,9 +405,35 @@ class WebRTCManager {
 
                 const response = await fetch(url);
                 if (response.ok) {
-                    const messages = await response.json();
-                    for (const message of messages) {
+                    const data = await response.json();
+                    
+                    // Handle both old and new response formats
+                    const messages = data.messages || data; // Support legacy format
+                    const lastSequence = data.lastSequence || 0;
+                    
+                    // Process messages in sequence order to prevent race conditions
+                    const sortedMessages = messages.sort((a, b) => (a.sequence || 0) - (b.sequence || 0));
+                    
+                    for (const message of sortedMessages) {
+                        // Skip already processed messages (deduplication)
+                        if (message.messageId && this.processedMessageIds.has(message.messageId)) {
+                            continue;
+                        }
+                        
                         this.lastPollTimestamp = Math.max(this.lastPollTimestamp, message.timestamp);
+                        this.lastSequence = Math.max(this.lastSequence, message.sequence || 0);
+                        
+                        // Track processed message
+                        if (message.messageId) {
+                            this.processedMessageIds.add(message.messageId);
+                            
+                            // Clean up old processed message IDs to prevent memory growth
+                            if (this.processedMessageIds.size > 200) {
+                                const oldIds = Array.from(this.processedMessageIds).slice(0, 100);
+                                oldIds.forEach(id => this.processedMessageIds.delete(id));
+                            }
+                        }
+                        
                         await this.handleSignalingMessage(message);
                     }
                 }
@@ -513,6 +581,9 @@ class WebRTCManager {
             queueSize: this.messageQueue.length,
             isProcessing: this.isProcessingQueue,
             maxQueueSize: this.maxQueueSize,
+            retryingMessages: this.messageRetryMap.size,
+            processedMessages: this.processedMessageIds.size,
+            lastSequence: this.lastSequence
         };
     }
 }
