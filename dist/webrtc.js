@@ -22,21 +22,17 @@ class WebRTCManager {
 
         this.configuration = {
             "iceServers": [
-                // {
-                //     "urls": [
-                //         "stun:stun.cloudflare.com:3478",
-                //         "stun:stun.cloudflare.com:53"
-                //     ]
-                // },
                 {
-                    "urls": [
+                    urls: [
+                        "stun:stun.cloudflare.com:3478",
+                        "stun:stun.cloudflare.com:53",
                         "turn:turn.cloudflare.com:3478?transport=udp",
-                        "turn:turn.cloudflare.com:3478?transport=tcp",
-                        "turns:turn.cloudflare.com:5349?transport=tcp",
                         "turn:turn.cloudflare.com:53?transport=udp",
+                        "turn:turn.cloudflare.com:3478?transport=tcp",
                         "turn:turn.cloudflare.com:80?transport=tcp",
+                        "turns:turn.cloudflare.com:5349?transport=tcp",
                         "turns:turn.cloudflare.com:443?transport=tcp"
-                    ],
+      ],
                     "username": "g05c5829edffd5e767d7fb9efcc2029c3b2e951460b137955cfb742521e2f567",
                     "credential": "63d1215c40dabd664ae127608fa7692f4cb0b19c76171d677c439899461c9e39"
                 }
