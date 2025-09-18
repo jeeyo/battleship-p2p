@@ -36,10 +36,15 @@ export async function onRequestPost(context) {
             expirationTtl: 2 * 60 * 60 // 2 hours
         });
         
-        // Initialize empty message queue for room
-        await env.MESSAGES.put(roomCode, JSON.stringify([]), {
-            expirationTtl: 2 * 60 * 60 // 2 hours
-        });
+        // Initialize empty message queues for both initiator and joiner
+        await Promise.all([
+            env.MESSAGES.put(`${roomCode}_initiator`, JSON.stringify([]), {
+                expirationTtl: 2 * 60 * 60 // 2 hours
+            }),
+            env.MESSAGES.put(`${roomCode}_joiner`, JSON.stringify([]), {
+                expirationTtl: 2 * 60 * 60 // 2 hours
+            })
+        ]);
         
         return new Response(JSON.stringify({
             success: true,

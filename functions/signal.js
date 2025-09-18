@@ -7,6 +7,7 @@ export async function onRequestPost(context) {
         const roomCode = body.roomCode;
         const senderId = body.senderId;
         const messageId = body.messageId; // Client should provide unique message ID
+        const isInitiator = body.isInitiator; // Whether sender is the room initiator
         
         if (!roomCode) {
             return new Response(JSON.stringify({ error: 'Room code required' }), { 
@@ -17,6 +18,13 @@ export async function onRequestPost(context) {
 
         if (!senderId) {
             return new Response(JSON.stringify({ error: 'Sender ID required' }), { 
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        if (typeof isInitiator !== 'boolean') {
+            return new Response(JSON.stringify({ error: 'isInitiator flag required' }), { 
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -37,8 +45,11 @@ export async function onRequestPost(context) {
         
         while (retryCount < maxRetries) {
             try {
-                // Get existing messages
-                const messagesData = await env.MESSAGES.get(roomCode);
+                // Determine message queue key based on sender role
+                const messageKey = isInitiator ? `${roomCode}_initiator` : `${roomCode}_joiner`;
+                
+                // Get existing messages from the appropriate queue
+                const messagesData = await env.MESSAGES.get(messageKey);
                 const messages = messagesData ? JSON.parse(messagesData) : [];
                 
                 // Check for duplicate message (deduplication)
@@ -79,7 +90,7 @@ export async function onRequestPost(context) {
                 }
                 
                 // Store back to KV with optimistic locking approach
-                await env.MESSAGES.put(roomCode, JSON.stringify(filteredMessages), {
+                await env.MESSAGES.put(messageKey, JSON.stringify(filteredMessages), {
                     expirationTtl: 2 * 60 * 60 // 2 hours
                 });
                 

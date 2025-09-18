@@ -31,9 +31,18 @@ export async function onRequestGet(context) {
             });
         }
         
-        // Get messages from KV
-        const messagesData = await env.MESSAGES.get(roomCode);
-        const allMessages = messagesData ? JSON.parse(messagesData) : [];
+        // Get messages from both initiator and joiner queues
+        const [initiatorMessagesData, joinerMessagesData] = await Promise.all([
+            env.MESSAGES.get(`${roomCode}_initiator`),
+            env.MESSAGES.get(`${roomCode}_joiner`)
+        ]);
+        
+        const initiatorMessages = initiatorMessagesData ? JSON.parse(initiatorMessagesData) : [];
+        const joinerMessages = joinerMessagesData ? JSON.parse(joinerMessagesData) : [];
+        
+        // Combine and sort all messages by timestamp
+        const allMessages = [...initiatorMessages, ...joinerMessages]
+            .sort((a, b) => a.timestamp - b.timestamp);
         
         // Efficient filtering with early termination for large message lists
         const newMessages = [];

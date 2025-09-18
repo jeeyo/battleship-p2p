@@ -361,11 +361,12 @@ class WebRTCManager {
     // Send signaling message directly to server (internal use)
     async sendSignalingMessageDirect(message) {
         try {
-            // Add senderId and messageId to the message
+            // Add senderId, messageId, and isInitiator to the message
             const messageWithSender = {
                 ...message,
                 senderId: this.clientId,
-                messageId: message.messageId
+                messageId: message.messageId,
+                isInitiator: this.isInitiator
             };
 
             const response = await fetch(`${this.signalingUrl}/signal`, {
