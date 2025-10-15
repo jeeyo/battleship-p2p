@@ -8,6 +8,7 @@ export async function onRequestPost(context) {
         const senderId = body.senderId;
         const messageId = body.messageId; // Client should provide unique message ID
         const isInitiator = body.isInitiator; // Whether sender is the room initiator
+        const token = body.token;
         
         if (!roomCode) {
             return new Response(JSON.stringify({ error: 'Room code required' }), { 
@@ -38,6 +39,20 @@ export async function onRequestPost(context) {
                 headers: { 'Content-Type': 'application/json' }
             });
         }
+
+        // Validate role token if provided
+        try {
+            const room = JSON.parse(roomData);
+            if (room && room.tokens && token) {
+                const valid = (isInitiator && token === room.tokens.initiator) || (!isInitiator && token === room.tokens.joiner);
+                if (!valid) {
+                    return new Response(JSON.stringify({ error: 'Invalid token' }), { 
+                        status: 403,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+            }
+        } catch {}
 
         // Retry mechanism for concurrent access
         let retryCount = 0;

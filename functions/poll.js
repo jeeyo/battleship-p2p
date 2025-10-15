@@ -7,6 +7,8 @@ export async function onRequestGet(context) {
         const roomCode = url.searchParams.get('roomCode');
         const lastTimestamp = parseInt(url.searchParams.get('lastTimestamp')) || 0;
         const requesterId = url.searchParams.get('requesterId');
+        const role = url.searchParams.get('role'); // 'initiator' | 'joiner'
+        const token = url.searchParams.get('token');
         
         if (!roomCode) {
             return new Response(JSON.stringify({ error: 'Room code required' }), { 
@@ -29,6 +31,19 @@ export async function onRequestGet(context) {
                 status: 404,
                 headers: { 'Content-Type': 'application/json' }
             });
+        }
+        // Optional token validation if provided
+        if (role && token) {
+            try {
+                const room = JSON.parse(roomData);
+                const expected = role === 'initiator' ? room?.tokens?.initiator : room?.tokens?.joiner;
+                if (expected && expected !== token) {
+                    return new Response(JSON.stringify({ error: 'Invalid token' }), { 
+                        status: 403,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+            } catch {}
         }
         
         // Get messages from both initiator and joiner queues

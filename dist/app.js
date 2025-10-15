@@ -165,6 +165,8 @@ class BattleshipApp {
                 this.game.gameState = 'waiting';
                 // Reset WebRTC connection
                 this.webrtc.close();
+                // Start relay fallback polling for any late messages
+                this.webrtc.startRelayPolling();
                 // Reset game state and UI
                 this.game.resetGame();
                 this.elements.roomDisplay.classList.add('hidden');
@@ -184,6 +186,8 @@ class BattleshipApp {
                 this.game.gameState = 'waiting';
                 // Reset WebRTC connection
                 this.webrtc.close();
+                // Start relay fallback polling for any late messages
+                this.webrtc.startRelayPolling();
                 // Reset game state and UI
                 this.game.resetGame();
                 this.elements.roomDisplay.classList.add('hidden');

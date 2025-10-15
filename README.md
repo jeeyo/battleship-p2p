@@ -154,6 +154,10 @@ The codebase is modular and extensible:
 - `POST /signal` - Exchange WebRTC signaling messages
 - `GET /poll` - Poll for pending messages
 - `GET /health` - Health check endpoint
+- `GET /turn-credentials` - Retrieve STUN/TURN ICE servers
+- `POST /metrics` - Client telemetry (sampled)
+- `POST /relay-send` - Send gameplay payload via edge relay fallback
+- `GET /relay-poll` - Poll gameplay payloads from edge relay fallback
 
 ## Browser Compatibility
 
@@ -166,7 +170,7 @@ WebRTC is required for P2P functionality.
 
 ## Known Limitations
 
-1. **No Reconnection**: If connection drops, players need to start a new game
+1. **Limited Reconnection**: ICE restarts attempted, but full seamless reconnection may vary by network
 2. **Memory Storage**: Cloudflare KV storage with 2-hour expiration
 3. **No Spectators**: Only 2 players per room supported
 4. **No AI**: Human opponent required

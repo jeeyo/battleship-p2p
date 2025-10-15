@@ -24,6 +24,13 @@ class WebRTCManager {
         // Will be initialized via /turn-credentials endpoint
         this.configuration = { iceServers: [] };
 
+        // Feature flags and tokens
+        this.flags = {
+            useEdgeRelayFallback: true,
+            // Future toggles: enableTurnEscalation, enableHostMigration, etc.
+        };
+        this.roleToken = null;
+
         // Connectivity/health
         this.connectStartAt = 0;
         this.connectedAt = 0;
@@ -384,7 +391,8 @@ class WebRTCManager {
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.error || `HTTP ${response.status}: Failed to create room`);
             }
-
+            const createData = await response.json().catch(() => ({}));
+            this.roleToken = createData && createData.token ? createData.token : null;
             // Start listening for signaling messages
             this.startSignalingListener();
 
@@ -444,7 +452,8 @@ class WebRTCManager {
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.error || `HTTP ${response.status}: Failed to join room`);
             }
-
+            const joinData = await response.json().catch(() => ({}));
+            this.roleToken = joinData && joinData.token ? joinData.token : null;
             // Start listening for signaling messages
             this.startSignalingListener();
 
@@ -475,7 +484,8 @@ class WebRTCManager {
                 ...message,
                 senderId: this.clientId,
                 messageId: message.messageId,
-                isInitiator: this.isInitiator
+                isInitiator: this.isInitiator,
+                token: this.roleToken,
             };
 
             const response = await fetch(`${this.signalingUrl}/signal`, {
@@ -512,6 +522,8 @@ class WebRTCManager {
                 url.searchParams.set('roomCode', this.roomCode);
                 url.searchParams.set('lastTimestamp', this.lastPollTimestamp.toString());
                 url.searchParams.set('requesterId', this.clientId);
+                url.searchParams.set('role', this.isInitiator ? 'initiator' : 'joiner');
+                if (this.roleToken) url.searchParams.set('token', this.roleToken);
 
                 const response = await fetch(url);
                 if (response.ok) {
@@ -633,9 +645,14 @@ class WebRTCManager {
 
     // Send game data to peer (reliable)
     sendGameData(data) {
+        const serialized = JSON.stringify(data);
         if (this.controlChannel && this.controlChannel.readyState === 'open') {
-            this.controlChannel.send(JSON.stringify(data));
+            this.controlChannel.send(serialized);
             return true;
+        }
+        // Fallback: edge relay if enabled
+        if (this.flags.useEdgeRelayFallback && this.roomCode) {
+            this.postRelay(serialized).catch(() => {});
         }
         console.warn('Cannot send game data: control channel not ready');
         return false;
@@ -738,6 +755,50 @@ class WebRTCManager {
                 })
             });
         } catch {}
+    }
+
+    // Relay fallback helpers
+    async postRelay(serialized) {
+        try {
+            await fetch(`${this.signalingUrl}/relay-send`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    roomCode: this.roomCode,
+                    role: this.isInitiator ? 'initiator' : 'joiner',
+                    token: this.roleToken,
+                    senderId: this.clientId,
+                    payload: serialized,
+                })
+            });
+        } catch (e) { /* swallow */ }
+    }
+
+    startRelayPolling() {
+        if (!this.flags.useEdgeRelayFallback) return;
+        if (this._relayTimer) clearInterval(this._relayTimer);
+        this._relayLastTs = 0;
+        this._relayTimer = setInterval(async () => {
+            try {
+                const url = new URL(`${this.signalingUrl}/relay-poll`);
+                url.searchParams.set('roomCode', this.roomCode);
+                url.searchParams.set('lastTimestamp', String(this._relayLastTs || 0));
+                url.searchParams.set('requesterId', this.clientId);
+                url.searchParams.set('role', this.isInitiator ? 'initiator' : 'joiner');
+                if (this.roleToken) url.searchParams.set('token', this.roleToken);
+                const res = await fetch(url);
+                if (!res.ok) return;
+                const data = await res.json();
+                const messages = data.messages || [];
+                for (const msg of messages) {
+                    this._relayLastTs = Math.max(this._relayLastTs, msg.timestamp);
+                    try {
+                        const parsed = JSON.parse(msg.payload);
+                        if (this.callbacks.onDataReceived) this.callbacks.onDataReceived(parsed);
+                    } catch {}
+                }
+            } catch {}
+        }, 1200);
     }
 }
 

@@ -2,17 +2,18 @@
 // Receives lightweight client telemetry. For now, it logs and returns 200.
 export async function onRequestPost(context) {
   try {
-    const { request } = context;
+    const { request, env } = context;
     const payload = await request.json().catch(() => ({}));
 
-    // Intentionally minimal: rely on request logs for observability.
-    // In production you might persist to Durable Object, KV, or Analytics Engine.
-    const response = {
-      success: true,
-      receivedAt: new Date().toISOString(),
-    };
+    // Optionally sample-store in KV for quick dashboards (rolling window)
+    const key = `_metrics_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const sampled = Math.random() < Number(env.METRICS_SAMPLE_RATE || 0.1);
+    if (sampled) {
+      const value = JSON.stringify({ ...payload, receivedAt: Date.now() });
+      await env.MESSAGES.put(key, value, { expirationTtl: 3600 });
+    }
 
-    return new Response(JSON.stringify(response), {
+    return new Response(JSON.stringify({ success: true }), {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {

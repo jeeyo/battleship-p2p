@@ -1,41 +1,48 @@
 // Cloudflare Pages Function: /create-room
 export async function onRequestPost(context) {
     const { request, env } = context;
-    
+
     try {
         const body = await request.json();
         const roomCode = body.roomCode;
-        
+
         if (!roomCode || roomCode.length !== 6) {
-            return new Response(JSON.stringify({ error: 'Invalid room code' }), { 
+            return new Response(JSON.stringify({ error: 'Invalid room code' }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
             });
         }
-        
+
         // Check if room already exists in KV
         const existingRoom = await env.ROOMS.get(roomCode);
         if (existingRoom) {
-            return new Response(JSON.stringify({ error: 'Room already exists' }), { 
+            return new Response(JSON.stringify({ error: 'Room already exists' }), {
                 status: 409,
                 headers: { 'Content-Type': 'application/json' }
             });
         }
-        
+
+        // Generate short-lived tokens for initiator/joiner (joiner token set on join)
+        const initiatorToken = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now();
+
         // Create new room
         const room = {
             id: roomCode,
             creator: request.headers.get('cf-connecting-ip') || 'unknown',
             participants: 1,
             createdAt: Date.now(),
-            status: 'waiting'
+            status: 'waiting',
+            tokens: {
+                initiator: initiatorToken,
+                joiner: null,
+            },
         };
-        
+
         // Store room in KV with 2 hour expiration
         await env.ROOMS.put(roomCode, JSON.stringify(room), {
             expirationTtl: 2 * 60 * 60 // 2 hours
         });
-        
+
         // Initialize empty message queues for both initiator and joiner
         await Promise.all([
             env.MESSAGES.put(`${roomCode}_initiator`, JSON.stringify([]), {
@@ -43,20 +50,28 @@ export async function onRequestPost(context) {
             }),
             env.MESSAGES.put(`${roomCode}_joiner`, JSON.stringify([]), {
                 expirationTtl: 2 * 60 * 60 // 2 hours
+            }),
+            // Relay queues for edge-relay fallback
+            env.MESSAGES.put(`${roomCode}_relay_initiator`, JSON.stringify([]), {
+                expirationTtl: 2 * 60 * 60 // 2 hours
+            }),
+            env.MESSAGES.put(`${roomCode}_relay_joiner`, JSON.stringify([]), {
+                expirationTtl: 2 * 60 * 60 // 2 hours
             })
         ]);
-        
+
         return new Response(JSON.stringify({
             success: true,
             roomCode: roomCode,
+            token: initiatorToken,
             message: 'Room created successfully'
         }), {
             headers: { 'Content-Type': 'application/json' }
         });
     } catch (error) {
-        return new Response(JSON.stringify({ code: error.code,error: error.message }), {
+        return new Response(JSON.stringify({ code: error.code, error: error.message }), {
             status: 400,
             headers: { 'Content-Type': 'application/json' }
         });
     }
-} 
+}
