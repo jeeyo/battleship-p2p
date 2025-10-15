@@ -36,14 +36,14 @@ class WebRTCManager {
         this.nextIceRestartDelayMs = 1000;
         this.iceRestartTimer = null;
 
-        this.lastPollTimestamp = 0;
-        this.lastSequence = 0;
-        this.pollInterval = null;
+        // WS signaling
+        this.ws = null;
+        this.wsReady = false;
 
         // Message queue system
         this.messageQueue = [];
         this.isProcessingQueue = false;
-        this.queueProcessingInterval = 1500; // Process every 1.5s due to Cloudflare KV limits (https://developers.cloudflare.com/kv/platform/limits/)
+        this.queueProcessingInterval = 100; // WS can handle faster cadence
         this.maxQueueSize = 50; // Prevent memory issues
         this.messageRetryMap = new Map(); // Track retry counts for failed messages
         this.processedMessageIds = new Set(); // Track processed messages to prevent duplicates
@@ -177,7 +177,8 @@ class WebRTCManager {
     getSignalingUrl() {
         // Check if running in development
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            return `http://${window.location.hostname}:8788`; // Local Wrangler dev server
+            // Prefer standalone worker dev on 8787 when available
+            return `http://${window.location.hostname}:8787`;
         }
 
         // Production - replace with your actual worker URL
@@ -366,27 +367,8 @@ class WebRTCManager {
             const inputs = this.peerConnection.createDataChannel('inputs', { ordered: false, maxRetransmits: 0 });
             this.setupInputsChannel(inputs);
 
-            // Test signaling server connection
-            await this.testSignalingServer();
-
-            // Register room with signaling server
-            const response = await fetch(`${this.signalingUrl}/create-room`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    roomCode: this.roomCode
-                })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || `HTTP ${response.status}: Failed to create room`);
-            }
-
-            // Start listening for signaling messages
-            this.startSignalingListener();
+            // Connect to Durable Object room WS
+            await this.connectWebSocket('initiator');
 
             if (this.callbacks.onRoomCreated) {
                 this.callbacks.onRoomCreated(this.roomCode);
@@ -426,27 +408,8 @@ class WebRTCManager {
             await this.loadIceServers();
             this.initializePeerConnection();
 
-            // Test signaling server connection
-            await this.testSignalingServer();
-
-            // Join room
-            const response = await fetch(`${this.signalingUrl}/join-room`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    roomCode: this.roomCode
-                })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || `HTTP ${response.status}: Failed to join room`);
-            }
-
-            // Start listening for signaling messages
-            this.startSignalingListener();
+            // Connect to Durable Object room WS
+            await this.connectWebSocket('joiner');
 
             if (this.callbacks.onRoomJoined) {
                 this.callbacks.onRoomJoined(this.roomCode);
@@ -462,99 +425,61 @@ class WebRTCManager {
         }
     }
 
-    // Send signaling message to server (queued)
+    // Send signaling message via WebSocket
     sendSignalingMessage(message) {
         this.queueSignalingMessage(message);
     }
 
-    // Send signaling message directly to server (internal use)
+    // Internal send over WebSocket (queued)
     async sendSignalingMessageDirect(message) {
-        try {
-            // Add senderId, messageId, and isInitiator to the message
-            const messageWithSender = {
-                ...message,
-                senderId: this.clientId,
-                messageId: message.messageId,
-                isInitiator: this.isInitiator
-            };
-
-            const response = await fetch(`${this.signalingUrl}/signal`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(messageWithSender)
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                console.error('Failed to send signaling message:', errorData);
-                throw new Error(errorData.error || `HTTP ${response.status}`);
-            }
-            
-            // Return response data for handling in processNextMessage
-            return await response.json();
-        } catch (error) {
-            console.error('Error sending signaling message:', error);
-            throw error;
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            throw new Error('WebSocket not open');
         }
+        const payload = {
+            ...message,
+            senderId: this.clientId,
+            messageId: message.messageId,
+            isInitiator: this.isInitiator,
+            roomCode: this.roomCode
+        };
+        this.ws.send(JSON.stringify(payload));
+        return { ok: true };
     }
 
-    // Start listening for signaling messages
-    startSignalingListener() {
-        if (this.pollInterval) {
-            clearInterval(this.pollInterval);
-        }
+    // Connect to WebSocket signaling via Durable Object
+    async connectWebSocket(role) {
+        const url = new URL(`${this.signalingUrl}/ws/${this.roomCode}`);
+        url.protocol = url.protocol.replace('http', 'ws');
+        url.searchParams.set('clientId', this.clientId);
+        url.searchParams.set('role', role);
 
-        const pollForMessages = async () => {
-            try {
-                const url = new URL(`${this.signalingUrl}/poll`);
-                url.searchParams.set('roomCode', this.roomCode);
-                url.searchParams.set('lastTimestamp', this.lastPollTimestamp.toString());
-                url.searchParams.set('requesterId', this.clientId);
+        await this.testSignalingServer();
 
-                const response = await fetch(url);
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    // Handle both old and new response formats
-                    const messages = data.messages || data; // Support legacy format
-                    const lastSequence = data.lastSequence || 0;
-                    
-                    // Process messages in sequence order to prevent race conditions
-                    const sortedMessages = messages.sort((a, b) => (a.sequence || 0) - (b.sequence || 0));
-                    
-                    for (const message of sortedMessages) {
-                        // Skip already processed messages (deduplication)
-                        if (message.messageId && this.processedMessageIds.has(message.messageId)) {
-                            continue;
-                        }
-                        
-                        this.lastPollTimestamp = Math.max(this.lastPollTimestamp, message.timestamp);
-                        this.lastSequence = Math.max(this.lastSequence, message.sequence || 0);
-                        
-                        // Track processed message
-                        if (message.messageId) {
-                            this.processedMessageIds.add(message.messageId);
-                            
-                            // Clean up old processed message IDs to prevent memory growth
-                            if (this.processedMessageIds.size > 200) {
-                                const oldIds = Array.from(this.processedMessageIds).slice(0, 100);
-                                oldIds.forEach(id => this.processedMessageIds.delete(id));
-                            }
-                        }
-                        
-                        await this.handleSignalingMessage(message);
-                    }
+        return new Promise((resolve, reject) => {
+            const ws = new WebSocket(url.toString());
+            let opened = false;
+            ws.onopen = () => {
+                opened = true;
+                this.ws = ws;
+                this.wsReady = true;
+                resolve();
+            };
+            ws.onmessage = async (evt) => {
+                try {
+                    const message = JSON.parse(evt.data);
+                    // Forward signaling messages into the same handler
+                    await this.handleSignalingMessage(message);
+                } catch (e) {
+                    console.warn('WS message parse error', e);
                 }
-            } catch (error) {
-                console.error('Error polling for messages:', error);
-            }
-        };
-
-        // Poll immediately and then set interval
-        pollForMessages();
-        this.pollInterval = setInterval(pollForMessages, 1000);
+            };
+            ws.onclose = () => {
+                this.wsReady = false;
+            };
+            ws.onerror = (err) => {
+                if (!opened) reject(err);
+            };
+        });
     }
 
     // Stop polling for signaling messages
