@@ -233,6 +233,8 @@ class WebRTCManager {
 
             if (this.peerConnection.iceConnectionState === 'connected') {
                 this.stopPolling(); // Stop polling once P2P connection is established
+                // Report selected candidate pair once on connect
+                this.reportSelectedCandidatePair();
             }
         };
     }
@@ -738,6 +740,44 @@ class WebRTCManager {
                 })
             });
         } catch {}
+    }
+
+    // Gather ICE selected pair stats and send to metrics
+    async reportSelectedCandidatePair() {
+        try {
+            if (!this.peerConnection) return;
+            const stats = await this.peerConnection.getStats();
+            let selected = null;
+            const candidateById = new Map();
+            stats.forEach(report => {
+                if (report.type === 'candidate-pair' && report.nominated) {
+                    selected = report;
+                }
+                if (report.type === 'local-candidate' || report.type === 'remote-candidate') {
+                    candidateById.set(report.id, report);
+                }
+            });
+            if (!selected) return;
+            const local = candidateById.get(selected.localCandidateId);
+            const remote = candidateById.get(selected.remoteCandidateId);
+            const payload = {
+                selectedCandidatePair: {
+                    protocol: selected.protocol || (local && local.protocol) || undefined,
+                    bytesSent: selected.bytesSent,
+                    bytesReceived: selected.bytesReceived,
+                    currentRoundTripTime: selected.currentRoundTripTime,
+                    availableOutgoingBitrate: selected.availableOutgoingBitrate,
+                    localCandidateType: local && local.candidateType,
+                    localAddress: local && local.address,
+                    localNetworkType: local && local.networkType,
+                    remoteCandidateType: remote && remote.candidateType,
+                    remoteAddress: remote && remote.address,
+                }
+            };
+            this.postMetrics('ice_selected_pair', payload);
+        } catch (e) {
+            console.warn('Failed to report selected candidate pair', e);
+        }
     }
 }
 
