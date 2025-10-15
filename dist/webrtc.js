@@ -1,7 +1,8 @@
 class WebRTCManager {
     constructor() {
         this.peerConnection = null;
-        this.dataChannel = null;
+        this.controlChannel = null; // reliable ordered
+        this.inputsChannel = null;  // unreliable, low-latency
         this.isInitiator = false;
         this.roomCode = null;
         
@@ -20,24 +21,20 @@ class WebRTCManager {
             onError: null
         };
 
-        this.configuration = {
-            "iceServers": [
-                {
-                    urls: [
-                        "stun:stun.cloudflare.com:3478",
-                        "stun:stun.cloudflare.com:53",
-                        "turn:turn.cloudflare.com:3478?transport=udp",
-                        "turn:turn.cloudflare.com:53?transport=udp",
-                        "turn:turn.cloudflare.com:3478?transport=tcp",
-                        "turn:turn.cloudflare.com:80?transport=tcp",
-                        "turns:turn.cloudflare.com:5349?transport=tcp",
-                        "turns:turn.cloudflare.com:443?transport=tcp"
-      ],
-                    "username": "g05c5829edffd5e767d7fb9efcc2029c3b2e951460b137955cfb742521e2f567",
-                    "credential": "63d1215c40dabd664ae127608fa7692f4cb0b19c76171d677c439899461c9e39"
-                }
-            ]
-        };
+        // Will be initialized via /turn-credentials endpoint
+        this.configuration = { iceServers: [] };
+
+        // Connectivity/health
+        this.connectStartAt = 0;
+        this.connectedAt = 0;
+        this.lastPongAt = 0;
+        this.pingIntervalMs = 2000;
+        this.pingTimeoutMs = 8000;
+        this.pingTimer = null;
+        this.iceRestartAttempts = 0;
+        this.maxIceRestartAttempts = 3;
+        this.nextIceRestartDelayMs = 1000;
+        this.iceRestartTimer = null;
 
         this.lastPollTimestamp = 0;
         this.lastSequence = 0;
@@ -50,6 +47,33 @@ class WebRTCManager {
         this.maxQueueSize = 50; // Prevent memory issues
         this.messageRetryMap = new Map(); // Track retry counts for failed messages
         this.processedMessageIds = new Set(); // Track processed messages to prevent duplicates
+    }
+
+    // Fetch ICE servers from worker endpoint
+    async loadIceServers() {
+        try {
+            const response = await fetch(`${this.signalingUrl}/turn-credentials`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            if (Array.isArray(data.iceServers)) {
+                this.configuration = { iceServers: data.iceServers };
+            } else {
+                this.configuration = {
+                    iceServers: [
+                        { urls: 'stun:stun.cloudflare.com:3478' },
+                        { urls: 'stun:stun.l.google.com:19302' }
+                    ]
+                };
+            }
+        } catch (e) {
+            console.warn('Failed to load ICE servers, using fallback STUN only', e);
+            this.configuration = {
+                iceServers: [
+                    { urls: 'stun:stun.cloudflare.com:3478' },
+                    { urls: 'stun:stun.l.google.com:19302' }
+                ]
+            };
+        }
     }
 
     // Queue management methods
@@ -190,10 +214,17 @@ class WebRTCManager {
             }
         };
 
-        // Handle incoming data channel
+        // Handle incoming data channels
         this.peerConnection.ondatachannel = (event) => {
             const channel = event.channel;
-            this.setupDataChannel(channel);
+            if (channel.label === 'control') {
+                this.setupControlChannel(channel);
+            } else if (channel.label === 'inputs') {
+                this.setupInputsChannel(channel);
+            } else {
+                // Backward compatibility with single-channel builds
+                this.setupControlChannel(channel);
+            }
         };
 
         // Handle ICE connection state
@@ -206,43 +237,117 @@ class WebRTCManager {
         };
     }
 
-    // Setup data channel
-    setupDataChannel(channel) {
-        this.dataChannel = channel;
-
-        this.dataChannel.onopen = () => {
-            console.log('Data channel opened');
-            this.stopPolling(); // Stop polling once data channel is open
-            if (this.callbacks.onConnectionStateChange) {
-                this.callbacks.onConnectionStateChange('connected');
-            }
+    // Setup reliable control channel
+    setupControlChannel(channel) {
+        this.controlChannel = channel;
+        this.controlChannel.onopen = () => {
+            console.log('Control channel opened');
+            this.onAnyChannelOpened();
         };
-
-        this.dataChannel.onclose = () => {
-            console.log('Data channel closed');
-            if (this.callbacks.onConnectionStateChange) {
-                this.callbacks.onConnectionStateChange('disconnected');
-            }
+        this.controlChannel.onclose = () => {
+            console.log('Control channel closed');
+            this.onAnyChannelClosed();
         };
-
-        this.dataChannel.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                console.log('Received data:', data);
-                if (this.callbacks.onDataReceived) {
-                    this.callbacks.onDataReceived(data);
-                }
-            } catch (error) {
-                console.error('Error parsing received data:', error);
-            }
+        this.controlChannel.onmessage = (event) => {
+            this.handleIncomingMessage(event, 'control');
         };
-
-        this.dataChannel.onerror = (error) => {
-            console.error('Data channel error:', error);
+        this.controlChannel.onerror = (error) => {
+            console.error('Control channel error:', error);
             if (this.callbacks.onError) {
-                this.callbacks.onError('Data channel error: ' + error);
+                this.callbacks.onError('Control channel error: ' + error);
             }
         };
+    }
+
+    // Setup unreliable inputs/heartbeat channel
+    setupInputsChannel(channel) {
+        this.inputsChannel = channel;
+        this.inputsChannel.onopen = () => {
+            console.log('Inputs channel opened');
+            this.onAnyChannelOpened();
+        };
+        this.inputsChannel.onclose = () => {
+            console.log('Inputs channel closed');
+            this.onAnyChannelClosed();
+        };
+        this.inputsChannel.onmessage = (event) => {
+            this.handleIncomingMessage(event, 'inputs');
+        };
+        this.inputsChannel.onerror = (error) => {
+            console.error('Inputs channel error:', error);
+            if (this.callbacks.onError) {
+                this.callbacks.onError('Inputs channel error: ' + error);
+            }
+        };
+    }
+
+    onAnyChannelOpened() {
+        this.stopPolling();
+        if (this.callbacks.onConnectionStateChange) {
+            this.callbacks.onConnectionStateChange('connected');
+        }
+        if (!this.pingTimer) {
+            this.startKeepalives();
+        }
+        if (!this.connectedAt && this.connectStartAt) {
+            this.connectedAt = Date.now();
+            this.postMetrics('webrtc_connected', { connectDurationMs: this.connectedAt - this.connectStartAt });
+        }
+    }
+
+    onAnyChannelClosed() {
+        // rely on connection state events
+    }
+
+    handleIncomingMessage(event, channelLabel) {
+        try {
+            const data = JSON.parse(event.data);
+            if (data && data.type === 'ping') {
+                const reply = { type: 'pong', t: data.t };
+                this.sendOnBestChannel(reply);
+                return;
+            }
+            if (data && data.type === 'pong') {
+                this.lastPongAt = Date.now();
+                return;
+            }
+            if (this.callbacks.onDataReceived) {
+                this.callbacks.onDataReceived(data);
+            }
+        } catch (error) {
+            console.error('Error parsing received data on', channelLabel, error);
+        }
+    }
+
+    startKeepalives() {
+        this.lastPongAt = Date.now();
+        if (this.pingTimer) clearInterval(this.pingTimer);
+        this.pingTimer = setInterval(() => {
+            const now = Date.now();
+            this.sendOnBestChannel({ type: 'ping', t: now });
+            if (now - this.lastPongAt > this.pingTimeoutMs) {
+                console.warn('Keepalive timeout, attempting ICE restart');
+                this.attemptIceRestart();
+            }
+        }, this.pingIntervalMs);
+    }
+
+    stopKeepalives() {
+        if (this.pingTimer) {
+            clearInterval(this.pingTimer);
+            this.pingTimer = null;
+        }
+    }
+
+    sendOnBestChannel(payload) {
+        const serialized = JSON.stringify(payload);
+        if (this.inputsChannel && this.inputsChannel.readyState === 'open') {
+            try { this.inputsChannel.send(serialized); return true; } catch {}
+        }
+        if (this.controlChannel && this.controlChannel.readyState === 'open') {
+            try { this.controlChannel.send(serialized); return true; } catch {}
+        }
+        return false;
     }
 
     // Create a new game room
@@ -251,13 +356,15 @@ class WebRTCManager {
             this.isInitiator = true;
             this.roomCode = this.generateRoomCode();
 
+            this.connectStartAt = Date.now();
+            await this.loadIceServers();
             this.initializePeerConnection();
 
-            // Create data channel
-            this.dataChannel = this.peerConnection.createDataChannel('gameData', {
-                ordered: true
-            });
-            this.setupDataChannel(this.dataChannel);
+            // Create dual channels
+            const control = this.peerConnection.createDataChannel('control', { ordered: true });
+            this.setupControlChannel(control);
+            const inputs = this.peerConnection.createDataChannel('inputs', { ordered: false, maxRetransmits: 0 });
+            this.setupInputsChannel(inputs);
 
             // Test signaling server connection
             await this.testSignalingServer();
@@ -315,6 +422,8 @@ class WebRTCManager {
             this.isInitiator = false;
             this.roomCode = roomCode;
 
+            this.connectStartAt = Date.now();
+            await this.loadIceServers();
             this.initializePeerConnection();
 
             // Test signaling server connection
@@ -522,13 +631,13 @@ class WebRTCManager {
         }
     }
 
-    // Send game data to peer
+    // Send game data to peer (reliable)
     sendGameData(data) {
-        if (this.dataChannel && this.dataChannel.readyState === 'open') {
-            this.dataChannel.send(JSON.stringify(data));
+        if (this.controlChannel && this.controlChannel.readyState === 'open') {
+            this.controlChannel.send(JSON.stringify(data));
             return true;
         }
-        console.warn('Cannot send game data: data channel not ready');
+        console.warn('Cannot send game data: control channel not ready');
         return false;
     }
 
@@ -550,19 +659,22 @@ class WebRTCManager {
     // Close connection
     close() {
         this.stopPolling();
+        this.stopKeepalives();
         this.stopQueueProcessing();
 
-        if (this.dataChannel) {
-            this.dataChannel.close();
-        }
+        if (this.controlChannel) this.controlChannel.close();
+        if (this.inputsChannel) this.inputsChannel.close();
 
         if (this.peerConnection) {
             this.peerConnection.close();
         }
 
-        this.dataChannel = null;
+        this.controlChannel = null;
+        this.inputsChannel = null;
         this.peerConnection = null;
         this.roomCode = null;
+        this.connectedAt = 0;
+        this.connectStartAt = 0;
     }
 
     // Get connection status
@@ -573,7 +685,7 @@ class WebRTCManager {
 
     // Check if connected
     isConnected() {
-        return this.dataChannel && this.dataChannel.readyState === 'open';
+        return this.controlChannel && this.controlChannel.readyState === 'open';
     }
 
     // Get queue status for debugging
@@ -586,6 +698,46 @@ class WebRTCManager {
             processedMessages: this.processedMessageIds.size,
             lastSequence: this.lastSequence
         };
+    }
+
+    // Attempt ICE restart with backoff
+    async attemptIceRestart() {
+        if (!this.peerConnection) return;
+        if (this.iceRestartTimer) return;
+        if (this.iceRestartAttempts >= this.maxIceRestartAttempts) {
+            console.warn('Max ICE restart attempts reached');
+            return;
+        }
+        const delay = this.nextIceRestartDelayMs;
+        this.iceRestartTimer = setTimeout(async () => {
+            this.iceRestartTimer = null;
+            try {
+                this.iceRestartAttempts += 1;
+                const offer = await this.peerConnection.createOffer({ iceRestart: true });
+                await this.peerConnection.setLocalDescription(offer);
+                this.sendSignalingMessage({ type: 'offer', offer, roomCode: this.roomCode });
+                this.postMetrics('ice_restart', { attempt: this.iceRestartAttempts });
+                this.nextIceRestartDelayMs = Math.min(this.nextIceRestartDelayMs * 2, 30000);
+            } catch (e) {
+                console.error('ICE restart failed', e);
+            }
+        }, delay);
+    }
+
+    async postMetrics(event, payload) {
+        try {
+            await fetch(`${this.signalingUrl}/metrics`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    event,
+                    roomCode: this.roomCode,
+                    clientId: this.clientId,
+                    timestamp: Date.now(),
+                    ...payload,
+                })
+            });
+        } catch {}
     }
 }
 
