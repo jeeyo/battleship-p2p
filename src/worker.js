@@ -145,8 +145,8 @@ export default {
     }
 
     // Serve static assets by default if configured
-    if (env.ASSETS) {
-      return env.ASSETS.fetch(request);
+    if (env.STATIC_ASSETS) {
+      return env.STATIC_ASSETS.fetch(request);
     }
 
     return new Response('Not Found', { status: 404 });

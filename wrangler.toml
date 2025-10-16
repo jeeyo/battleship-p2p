@@ -3,7 +3,6 @@ name = "battleship-p2p"
 compatibility_date = "2023-07-01"
 
 send_metrics = false
-pages_build_output_dir = "dist"
 
 # Worker entry for Durable Object signaling
 main = "src/worker.js"
@@ -24,4 +23,4 @@ new_classes = ["RoomDurable"]
 # Static assets (Pages build output) served from Worker
 [assets]
 directory = "dist"
-binding = "ASSETS"
+binding = "STATIC_ASSETS"
