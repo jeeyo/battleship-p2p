@@ -20,7 +20,7 @@ Demo: https://battleship-p2p.pages.dev/
 
 - **Frontend**: HTML5, CSS3, JavaScript (ES6+)
 - **Networking**: WebRTC for P2P communication
-- **Signaling**: Cloudflare Pages Functions
+- **Signaling**: Cloudflare Workers + Durable Objects (WebSocket)
 - **Styling**: CSS Grid, Flexbox, CSS Variables
 - **Game Logic**: Object-oriented JavaScript
 
@@ -51,15 +51,15 @@ Demo: https://battleship-p2p.pages.dev/
 
 2. **Start Development Server**:
    ```bash
-   # Start local Cloudflare Pages development server
-   npm run preview
+   # Start local Cloudflare Worker (Durable Objects + static assets)
+   npm run dev:worker
    ```
-   This will serve the game with local functions support.
+   This serves the Worker on port 8787 and the static assets from `dist/`.
 
 3. **Open in Browser**:
-   Navigate to `http://localhost:8788`
+Navigate to `http://localhost:8787`
 
-### Deploying to Cloudflare Pages
+### Deploying to Cloudflare Workers
 
 1. **Install Wrangler CLI** (if not already installed):
    ```bash
@@ -71,12 +71,11 @@ Demo: https://battleship-p2p.pages.dev/
    wrangler login
    ```
 
-3. **Deploy to Cloudflare Pages**:
+3. **Deploy to Cloudflare Workers**:
    ```bash
-   npm run deploy
+   npm run deploy:worker
    ```
-
-The signaling server is automatically configured to work in both development and production environments.
+The Worker serves both the signaling WebSocket and the static site.
 
 ## File Structure
 
@@ -88,12 +87,7 @@ battleship-p2p/
 │   ├── game-logic.js       # Core Battleship game logic
 │   ├── webrtc.js          # WebRTC connection management
 │   └── app.js             # Main application controller
-├── functions/              # Cloudflare Pages Functions (API endpoints)
-│   ├── create-room.js     # Room creation endpoint
-│   ├── join-room.js       # Room joining endpoint
-│   ├── signal.js          # WebRTC signaling endpoint
-│   ├── poll.js            # Message polling endpoint
-│   └── health.js          # Health check endpoint
+├── src/worker.js          # Cloudflare Worker entry with Durable Object
 ├── package.json           # Node.js dependencies
 ├── wrangler.toml         # Cloudflare Pages configuration
 └── README.md             # This file
@@ -147,13 +141,11 @@ The codebase is modular and extensible:
 4. Game data transmission over data channel
 5. Turn synchronization messages to maintain game state
 
-### API Endpoints
+### Worker Endpoints
 
-- `POST /create-room` - Create a new game room
-- `POST /join-room` - Join an existing game room
-- `POST /signal` - Exchange WebRTC signaling messages
-- `GET /poll` - Poll for pending messages
 - `GET /health` - Health check endpoint
+- `GET /turn-credentials` - Returns ICE/TURN config
+- `WS /ws/:roomCode` - WebSocket signaling via Durable Object
 
 ## Browser Compatibility
 
