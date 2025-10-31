@@ -1,8 +1,13 @@
-on: [push]
+on:
+  push:
+    branches: [main]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment:
+        name: production
+        url: https://battleship-p2p.jeeyo.workers.dev/
     permissions:
       contents: read
       deployments: write
