@@ -2,7 +2,7 @@
 
 A modern, web-based Battleship game that uses WebRTC for peer-to-peer gameplay. Players can create or join games using room codes, place their ships, and battle it out in real-time without the need for a central game server.
 
-Demo: https://battleship-p2p.pages.dev/
+Demo: https://battleship-p2p.jeeyo.workers.dev/
 
 ## Features
 
