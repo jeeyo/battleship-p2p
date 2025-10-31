@@ -1,6 +1,6 @@
 name = "battleship-p2p"
 
-compatibility_date = "2023-07-01"
+compatibility_date = "2025-01-15"
 
 send_metrics = false
 
@@ -18,7 +18,7 @@ bindings = [
 
 [[migrations]]
 tag = "v1-room-do"
-new_classes = ["RoomDurable"]
+new_sqlite_classes = ["RoomDurable"]
 
 # Static assets (Pages build output) served from Worker
 [assets]

@@ -89,7 +89,7 @@ battleship-p2p/
 │   └── app.js             # Main application controller
 ├── src/worker.js          # Cloudflare Worker entry with Durable Object
 ├── package.json           # Node.js dependencies
-├── wrangler.toml         # Cloudflare Pages configuration
+├── wrangler.toml         # Cloudflare Workers configuration
 └── README.md             # This file
 ```
 
@@ -125,7 +125,7 @@ The codebase is modular and extensible:
 - **UI Components**: Update HTML structure in `dist/index.html` and CSS styling in `dist/styles.css`
 - **Networking**: Extend `WebRTCManager` class in `dist/webrtc.js`
 - **Application Flow**: Modify `BattleshipApp` class in `dist/app.js`
-- **API Endpoints**: Add new functions in the `functions/` directory
+- **Worker Endpoints**: Add new endpoints in `src/worker.js`
 
 ### Key Classes
 
@@ -135,7 +135,7 @@ The codebase is modular and extensible:
 
 ### WebRTC Flow
 
-1. Room creation/joining via Cloudflare Pages Functions
+1. Room creation/joining via Cloudflare Workers (Durable Objects)
 2. Signaling message exchange (offers, answers, ICE candidates)
 3. Direct P2P data channel establishment
 4. Game data transmission over data channel
@@ -169,7 +169,7 @@ WebRTC is required for P2P functionality.
 
 **"Failed to create/join room"**:
 - Check your internet connection
-- Verify the Cloudflare Pages deployment is accessible
+- Verify the Cloudflare Workers deployment is accessible
 - Check browser console for detailed error messages
 
 **"WebRTC connection failed"**:
@@ -205,7 +205,7 @@ Open browser developer tools and check the console for detailed connection and g
 - **Turn Mechanics**: Players alternate after every shot (not just misses)
 - **Improved Synchronization**: Better turn state management between players
 - **Board Bug Fixes**: Fixed issues with cell state management
-- **Cloudflare Pages**: Migrated to Cloudflare Pages Functions architecture
+- **Cloudflare Workers**: Migrated from Cloudflare Pages to Workers with Durable Objects
 
 ## License
 
@@ -215,7 +215,7 @@ This project is open source and available under the [MIT License](LICENSE).
 
 - Game concept: Classic Battleship board game
 - Icons: Emoji characters for visual feedback
-- Networking: WebRTC and Cloudflare Pages
+- Networking: WebRTC and Cloudflare Workers
 
 ---
 
