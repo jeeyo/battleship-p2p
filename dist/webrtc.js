@@ -46,7 +46,6 @@ class WebRTCManager {
         this.queueProcessingInterval = 100; // WS can handle faster cadence
         this.maxQueueSize = 50; // Prevent memory issues
         this.messageRetryMap = new Map(); // Track retry counts for failed messages
-        this.processedMessageIds = new Set(); // Track processed messages to prevent duplicates
     }
 
     // Fetch ICE servers from worker endpoint
@@ -86,8 +85,7 @@ class WebRTCManager {
         // Prevent queue from growing too large
         if (this.messageQueue.length >= this.maxQueueSize) {
             console.warn('Signaling message queue full, dropping oldest message');
-            const droppedMessage = this.messageQueue.shift();
-            this.messageRetryMap.delete(droppedMessage.messageId);
+            this.messageQueue.shift();
         }
 
         // Add enhanced metadata for processing
@@ -170,7 +168,6 @@ class WebRTCManager {
         this.isProcessingQueue = false;
         this.messageQueue = []; // Clear remaining messages
         this.messageRetryMap.clear(); // Clear retry tracking
-        this.processedMessageIds.clear(); // Clear processed message tracking
     }
 
     // Determine signaling URL based on environment
@@ -484,11 +481,7 @@ class WebRTCManager {
 
     // Stop polling for signaling messages
     stopPolling() {
-        if (this.pollInterval) {
-            clearInterval(this.pollInterval);
-            this.pollInterval = null;
-            console.log('Stopped signaling message polling');
-        }
+        // Polling is not used in this implementation
     }
 
     // Handle incoming signaling messages
@@ -600,29 +593,6 @@ class WebRTCManager {
         this.roomCode = null;
         this.connectedAt = 0;
         this.connectStartAt = 0;
-    }
-
-    // Get connection status
-    getConnectionState() {
-        if (!this.peerConnection) return 'disconnected';
-        return this.peerConnection.connectionState;
-    }
-
-    // Check if connected
-    isConnected() {
-        return this.controlChannel && this.controlChannel.readyState === 'open';
-    }
-
-    // Get queue status for debugging
-    getQueueStatus() {
-        return {
-            queueSize: this.messageQueue.length,
-            isProcessing: this.isProcessingQueue,
-            maxQueueSize: this.maxQueueSize,
-            retryingMessages: this.messageRetryMap.size,
-            processedMessages: this.processedMessageIds.size,
-            lastSequence: this.lastSequence
-        };
     }
 
     // Attempt ICE restart with backoff

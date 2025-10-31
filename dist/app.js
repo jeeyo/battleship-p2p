@@ -88,9 +88,6 @@ class BattleshipApp {
         this.game.gameCallbacks = {
             onGameStateChange: (state) => this.handleGameStateChange(state),
             onTurnChange: (turn) => this.handleTurnChange(turn),
-            onHit: (row, col) => this.handleHit(row, col),
-            onMiss: (row, col) => this.handleMiss(row, col),
-            onShipSunk: (ship) => this.handleShipSunk(ship),
             onGameOver: (winner) => this.handleGameOver(winner)
         };
     }
@@ -276,20 +273,6 @@ class BattleshipApp {
     handleTurnChange(turn) {
         this.elements.turnStatus.textContent = turn === 'player' ? 'Your Turn' : 'Enemy Turn';
         this.elements.enemyBoard.style.pointerEvents = turn === 'player' ? 'auto' : 'none';
-    }
-    
-    handleHit(row, col) {
-        // Visual feedback for hit
-        console.log(`Hit at ${row}, ${col}`);
-    }
-    
-    handleMiss(row, col) {
-        // Visual feedback for miss
-        console.log(`Miss at ${row}, ${col}`);
-    }
-    
-    handleShipSunk(ship) {
-        console.log(`Ship sunk: ${ship.name}`);
     }
     
     handleGameOver(winner) {

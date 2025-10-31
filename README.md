@@ -15,6 +15,7 @@ Demo: https://battleship-p2p.pages.dev/
 - 🌊 **Interactive Ship Placement**: Click to place and rotate ships with visual validation
 - 📊 **Game Statistics**: Track shots fired and ships remaining
 - ⚡ **Flexible Ship Placement**: Ships can be placed adjacent to each other for strategic positioning
+- 📱 **PWA Support**: Installable as a Progressive Web App for offline access
 
 ## Technology Stack
 
@@ -57,7 +58,7 @@ Demo: https://battleship-p2p.pages.dev/
    This serves the Worker on port 8787 and the static assets from `dist/`.
 
 3. **Open in Browser**:
-Navigate to `http://localhost:8787`
+   Navigate to `http://localhost:8787`
 
 ### Deploying to Cloudflare Workers
 
@@ -86,8 +87,15 @@ battleship-p2p/
 │   ├── styles.css          # CSS styling and animations
 │   ├── game-logic.js       # Core Battleship game logic
 │   ├── webrtc.js          # WebRTC connection management
-│   └── app.js             # Main application controller
-├── src/worker.js          # Cloudflare Worker entry with Durable Object
+│   ├── app.js             # Main application controller
+│   ├── sw.js              # Service worker for offline support
+│   ├── manifest.json       # PWA manifest
+│   └── favicon-*.png       # App icons
+├── src/
+│   └── worker.js          # Cloudflare Worker entry with Durable Object
+├── .github/
+│   └── workflows/
+│       └── worker-deployment.yaml  # CI/CD deployment workflow
 ├── package.json           # Node.js dependencies
 ├── wrangler.toml         # Cloudflare Workers configuration
 └── README.md             # This file
@@ -136,16 +144,18 @@ The codebase is modular and extensible:
 ### WebRTC Flow
 
 1. Room creation/joining via Cloudflare Workers (Durable Objects)
-2. Signaling message exchange (offers, answers, ICE candidates)
-3. Direct P2P data channel establishment
-4. Game data transmission over data channel
-5. Turn synchronization messages to maintain game state
+2. WebSocket signaling connection to Durable Object for room coordination
+3. Signaling message exchange (offers, answers, ICE candidates) via WebSocket
+4. Direct P2P data channel establishment (reliable control channel + unreliable inputs channel)
+5. Game data transmission over data channels
+6. Turn synchronization messages to maintain game state
 
 ### Worker Endpoints
 
 - `GET /health` - Health check endpoint
-- `GET /turn-credentials` - Returns ICE/TURN config
-- `WS /ws/:roomCode` - WebSocket signaling via Durable Object
+- `GET /turn-credentials` - Returns ICE/TURN server configuration
+- `POST /metrics` - Metrics/analytics endpoint (optional)
+- `WS /ws/:roomCode` - WebSocket signaling via Durable Object for room coordination
 
 ## Browser Compatibility
 
@@ -159,7 +169,7 @@ WebRTC is required for P2P functionality.
 ## Known Limitations
 
 1. **No Reconnection**: If connection drops, players need to start a new game
-2. **Memory Storage**: Cloudflare KV storage with 2-hour expiration
+2. **No Persistence**: Game state is not persisted; rooms are temporary
 3. **No Spectators**: Only 2 players per room supported
 4. **No AI**: Human opponent required
 
@@ -201,6 +211,7 @@ Open browser developer tools and check the console for detailed connection and g
 
 ## Recent Changes
 
+- **Code Cleanup**: Removed unused code and methods for cleaner codebase
 - **Adjacent Ship Placement**: Ships can now be placed touching each other
 - **Turn Mechanics**: Players alternate after every shot (not just misses)
 - **Improved Synchronization**: Better turn state management between players

@@ -3,7 +3,6 @@ export class RoomDurable {
     this.state = state;
     this.env = env;
     this.sockets = new Map(); // clientId -> WebSocket
-    this.roles = new Map();   // clientId -> role (initiator|joiner)
   }
 
   // Handle WebSocket connections inside the Durable Object for a given room
@@ -13,7 +12,6 @@ export class RoomDurable {
 
     if (upgradeHeader && upgradeHeader.toLowerCase() === 'websocket') {
       const clientId = url.searchParams.get('clientId') || `client_${Math.random().toString(36).slice(2)}`;
-      const role = url.searchParams.get('role') || 'guest';
 
       // Enforce max 2 distinct clients (replace existing same-client reconnects)
       const distinctIds = [...this.sockets.keys()].filter((id) => id !== clientId);
@@ -34,7 +32,6 @@ export class RoomDurable {
         }
 
         this.sockets.set(clientId, server);
-        this.roles.set(clientId, role);
 
         // If another peer is already connected, notify peer joined
         if (this.sockets.size >= 2) {
@@ -53,20 +50,15 @@ export class RoomDurable {
 
         server.addEventListener('close', () => {
           this.sockets.delete(clientId);
-          this.roles.delete(clientId);
-          // Optionally notify remaining peer
-          this.broadcast({ type: 'peer-left', clientId });
         });
 
         server.addEventListener('error', () => {
           try { server.close(1011, 'WebSocket error'); } catch {}
           this.sockets.delete(clientId);
-          this.roles.delete(clientId);
         });
       } catch (e) {
         try { server.close(1011, 'Internal error'); } catch {}
         this.sockets.delete(clientId);
-        this.roles.delete(clientId);
         return new Response('Internal error', { status: 101 });
       }
 
@@ -86,7 +78,7 @@ export class RoomDurable {
 }
 
 export default {
-  async fetch(request, env, ctx) {
+  async fetch(request, env) {
     const url = new URL(request.url);
     const { pathname } = url;
     const corsHeaders = {

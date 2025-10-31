@@ -27,9 +27,6 @@ class BattleshipGame {
         this.gameCallbacks = {
             onGameStateChange: null,
             onTurnChange: null,
-            onHit: null,
-            onMiss: null,
-            onShipSunk: null,
             onGameOver: null
         };
     }
@@ -268,45 +265,6 @@ class BattleshipGame {
         if (this.gameCallbacks.onTurnChange) {
             this.gameCallbacks.onTurnChange(this.currentTurn);
         }
-    }
-    
-    makeMove(row, col) {
-        if (this.gameState !== 'playing' || this.currentTurn !== 'player') {
-            return null;
-        }
-        
-        const result = this.attack(this.enemyBoard, this.enemyShips, row, col);
-        
-        if (result.result === 'already-hit') {
-            return null;
-        }
-        
-        this.shotsFired++;
-        
-        // Handle result callbacks
-        if (result.result === 'hit' && this.gameCallbacks.onHit) {
-            this.gameCallbacks.onHit(row, col);
-        } else if (result.result === 'miss' && this.gameCallbacks.onMiss) {
-            this.gameCallbacks.onMiss(row, col);
-        } else if (result.result === 'sunk' && this.gameCallbacks.onShipSunk) {
-            this.gameCallbacks.onShipSunk(result.ship);
-        }
-        
-        // Check for game over
-        if (this.allShipsSunk(this.enemyShips)) {
-            this.gameState = 'finished';
-            if (this.gameCallbacks.onGameOver) {
-                this.gameCallbacks.onGameOver('player');
-            }
-            return result;
-        }
-        
-        // Switch turns only on miss
-        if (result.result === 'miss') {
-            this.switchTurn();
-        }
-        
-        return result;
     }
     
     receiveEnemyMove(row, col) {
