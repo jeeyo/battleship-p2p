@@ -569,6 +569,8 @@ class BattleshipApp {
             for (let col = 0; col < 10; col++) {
                 const cell = document.createElement('div');
                 cell.className = 'cell';
+                cell.dataset.row = row;
+                cell.dataset.col = col;
                 
                 const cellState = this.game.getCellState(this.game.playerBoard, row, col);
                 cell.classList.add(cellState);
@@ -639,25 +641,60 @@ class BattleshipApp {
     }
     
     receiveAttack(row, col) {
-        const result = this.game.receiveEnemyMove(row, col);
+        // Show incoming attack animation
+        const cellElements = this.elements.playerBoard.children;
+        const attackedCell = Array.from(cellElements).find(c => 
+            parseInt(c.dataset.row) === row && parseInt(c.dataset.col) === col
+        );
         
-        // Check if this attack caused the defender to lose
-        const gameOver = this.game.gameState === 'finished';
+        if (attackedCell) {
+            attackedCell.classList.add('incoming-attack-animation');
+        }
         
-        // Send result back
-        this.webrtc.sendGameData({
-            type: 'attack-result',
-            row: row,
-            col: col,
-            result: result.result,
-            ship: result.ship,
-            gameOver: gameOver,
-            winner: gameOver ? 'attacker' : null
-        });
-        
-        // Update display
-        this.renderPlayerBoard();
-        this.updateGameStats();
+        // Add delay for tension before processing the attack
+        setTimeout(() => {
+            const result = this.game.receiveEnemyMove(row, col);
+            
+            // Check if this attack caused the defender to lose
+            const gameOver = this.game.gameState === 'finished';
+            
+            // Send result back
+            this.webrtc.sendGameData({
+                type: 'attack-result',
+                row: row,
+                col: col,
+                result: result.result,
+                ship: result.ship,
+                gameOver: gameOver,
+                winner: gameOver ? 'attacker' : null
+            });
+            
+            // Update display with result
+            this.renderPlayerBoard();
+            this.updateGameStats();
+            
+            // Add result animation
+            const updatedCellElements = this.elements.playerBoard.children;
+            const resultCell = Array.from(updatedCellElements).find(c => 
+                parseInt(c.dataset.row) === row && parseInt(c.dataset.col) === col
+            );
+            
+            if (resultCell) {
+                resultCell.classList.add('result-reveal');
+                if (result.result === 'hit' || result.result === 'sunk') {
+                    resultCell.classList.add('hit-animation');
+                } else {
+                    resultCell.classList.add('miss-animation');
+                }
+            }
+            
+            // If game is over, handle it immediately
+            if (gameOver) {
+                setTimeout(() => {
+                    this.handleGameOver('enemy');
+                }, 500);
+            }
+        }, 800); // Delay before processing attack
     }
     
     handleAttackResult(data) {
