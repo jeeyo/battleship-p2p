@@ -23,6 +23,7 @@ class BattleshipGame {
         this.selectedShip = null;
         this.shipOrientation = 'horizontal';
         this.shotsFired = 0;
+        this.isShooting = false;
         
         this.gameCallbacks = {
             onGameStateChange: null,
@@ -304,6 +305,7 @@ class BattleshipGame {
         this.selectedShip = null;
         this.shipOrientation = 'horizontal';
         this.shotsFired = 0;
+        this.isShooting = false;
         // Don't reset isInitiator - preserve who created the room
     }
     

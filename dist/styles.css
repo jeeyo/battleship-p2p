@@ -573,6 +573,142 @@ input:focus {
     cursor: not-allowed;
 }
 
+.enemy-board.not-your-turn {
+    opacity: 0.5;
+    filter: grayscale(50%);
+}
+
+.enemy-board.not-your-turn .cell {
+    cursor: not-allowed;
+}
+
+.enemy-board.not-your-turn .cell:hover {
+    background: var(--water-color);
+    transform: none;
+}
+
+/* Shooting Animation */
+.enemy-board.shooting {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.cell.shooting-animation {
+    position: relative;
+    overflow: visible;
+    animation: missile-approach 0.8s ease-out forwards;
+}
+
+.cell.shooting-animation::before {
+    content: '💥';
+    position: absolute;
+    font-size: 2em;
+    z-index: 10;
+    animation: missile-trail 0.8s ease-out forwards;
+    opacity: 0;
+}
+
+@keyframes missile-approach {
+    0% {
+        background: var(--water-color);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    }
+    50% {
+        background: rgba(239, 68, 68, 0.3);
+        box-shadow: 0 0 20px 5px rgba(239, 68, 68, 0.5);
+        transform: scale(1.1);
+    }
+    100% {
+        background: var(--water-color);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+        transform: scale(1);
+    }
+}
+
+@keyframes missile-trail {
+    0% {
+        opacity: 0;
+        transform: scale(0) translateY(-50px);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.2) translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Result Reveal Animation */
+.cell.result-reveal {
+    animation: result-pulse 0.5s ease-out;
+}
+
+.cell.hit-animation {
+    animation: hit-explosion 0.6s ease-out;
+}
+
+.cell.miss-animation {
+    animation: miss-splash 0.6s ease-out;
+}
+
+@keyframes result-pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.15);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes hit-explosion {
+    0% {
+        background: var(--water-color);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+        transform: scale(1);
+    }
+    30% {
+        box-shadow: 0 0 30px 10px rgba(239, 68, 68, 0.8);
+        transform: scale(1.2);
+    }
+    60% {
+        background: var(--hit-color);
+        box-shadow: 0 0 20px 5px rgba(239, 68, 68, 0.6);
+        transform: scale(1.1);
+    }
+    100% {
+        background: var(--hit-color);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+        transform: scale(1);
+    }
+}
+
+@keyframes miss-splash {
+    0% {
+        background: var(--water-color);
+        box-shadow: 0 0 0 0 rgba(100, 116, 139, 0);
+        transform: scale(1);
+    }
+    30% {
+        box-shadow: 0 0 25px 8px rgba(100, 116, 139, 0.6);
+        transform: scale(1.15);
+    }
+    60% {
+        background: var(--miss-color);
+        box-shadow: 0 0 15px 4px rgba(100, 116, 139, 0.4);
+        transform: scale(1.05);
+    }
+    100% {
+        background: var(--miss-color);
+        box-shadow: 0 0 0 0 rgba(100, 116, 139, 0);
+        transform: scale(1);
+    }
+}
+
 /* Placement Board */
 .placement-board .cell.valid-placement {
     background: rgba(16, 185, 129, 0.5);

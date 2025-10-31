@@ -273,6 +273,11 @@ class BattleshipApp {
     handleTurnChange(turn) {
         this.elements.turnStatus.textContent = turn === 'player' ? 'Your Turn' : 'Enemy Turn';
         this.elements.enemyBoard.style.pointerEvents = turn === 'player' ? 'auto' : 'none';
+        if (turn === 'player') {
+            this.elements.enemyBoard.classList.remove('not-your-turn');
+        } else {
+            this.elements.enemyBoard.classList.add('not-your-turn');
+        }
     }
     
     handleGameOver(winner) {
@@ -598,21 +603,29 @@ class BattleshipApp {
     
     enemyCellClick(row, col) {
         if (this.game.currentTurn !== 'player') return;
+        if (this.game.isShooting) return; // Prevent multiple clicks during animation
         
         // Check if cell already hit
         const cell = this.game.enemyBoard[row][col];
         if (cell.hit) return;
         
-        // Mark as hit temporarily and increment shots
-        cell.hit = true;
+        // Mark that we're shooting to prevent multiple clicks
+        this.game.isShooting = true;
         this.game.shotsFired++;
         
-        // Switch turns after making attack and notify opponent
-        this.game.switchTurn();
-        this.webrtc.sendGameData({
-            type: 'turn-switch',
-            newTurn: this.game.currentTurn
-        });
+        // Disable the enemy board during animation
+        this.elements.enemyBoard.classList.add('shooting');
+        this.elements.enemyBoard.style.pointerEvents = 'none';
+        
+        // Get the cell element and add shooting animation
+        const cellElements = this.elements.enemyBoard.children;
+        const clickedCell = Array.from(cellElements).find(c => 
+            parseInt(c.dataset.row) === row && parseInt(c.dataset.col) === col
+        );
+        
+        if (clickedCell) {
+            clickedCell.classList.add('shooting-animation');
+        }
         
         // Send attack to opponent
         this.webrtc.sendGameData({
@@ -621,9 +634,8 @@ class BattleshipApp {
             col: col
         });
         
-        // Update display
-        this.renderEnemyBoard();
-        this.updateGameStats();
+        // Wait for result before switching turns and updating
+        // The result will come through handleAttackResult
     }
     
     receiveAttack(row, col) {
@@ -662,14 +674,51 @@ class BattleshipApp {
         
         // Check if the game is over (opponent confirmed they lost)
         if (data.gameOver && data.winner === 'attacker') {
+            this.game.isShooting = false;
+            this.elements.enemyBoard.classList.remove('shooting');
             this.game.gameState = 'finished';
             this.handleGameOver('player');
             this.renderEnemyBoard();
             return;
         }
         
-        this.renderEnemyBoard();
-        this.updateGameStats();
+        // Add delay for tension before showing result
+        setTimeout(() => {
+            // Update display with result
+            this.renderEnemyBoard();
+            this.updateGameStats();
+            
+            // Add result animation
+            const cellElements = this.elements.enemyBoard.children;
+            const resultCell = Array.from(cellElements).find(c => 
+                parseInt(c.dataset.row) === data.row && parseInt(c.dataset.col) === data.col
+            );
+            
+            if (resultCell) {
+                resultCell.classList.add('result-reveal');
+                if (data.result === 'hit' || data.result === 'sunk') {
+                    resultCell.classList.add('hit-animation');
+                } else {
+                    resultCell.classList.add('miss-animation');
+                }
+            }
+            
+            // Wait for animation to complete, then switch turns
+            setTimeout(() => {
+                this.game.isShooting = false;
+                this.elements.enemyBoard.classList.remove('shooting');
+                
+                // Switch turns after making attack
+                this.game.switchTurn();
+                this.webrtc.sendGameData({
+                    type: 'turn-switch',
+                    newTurn: this.game.currentTurn
+                });
+                
+                // Update turn display (will also enable/disable board)
+                this.handleTurnChange(this.game.currentTurn);
+            }, 500); // Wait for result animation
+        }, 800); // Initial delay before showing result
     }
     
     handleTurnSwitch(data) {
