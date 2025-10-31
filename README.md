@@ -173,30 +173,6 @@ WebRTC is required for P2P functionality.
 3. **No Spectators**: Only 2 players per room supported
 4. **No AI**: Human opponent required
 
-## Troubleshooting
-
-### Common Issues
-
-**"Failed to create/join room"**:
-- Check your internet connection
-- Verify the Cloudflare Workers deployment is accessible
-- Check browser console for detailed error messages
-
-**"WebRTC connection failed"**:
-- Ensure both players have modern browsers
-- Check if either player is behind a restrictive firewall
-- Try refreshing and creating a new room
-
-**"Ships not placing correctly"**:
-- Ships cannot overlap but can be adjacent
-- Ensure ship fits within the 10x10 grid boundaries
-- Try using "Random Placement" if having manual placement issues
-
-**"Turns not switching properly"**:
-- Both players must have stable connections
-- Check if both players are using the same deployed version
-- Try refreshing if turn synchronization gets stuck
-
 ### Debug Mode
 
 Open browser developer tools and check the console for detailed connection and game state information.
